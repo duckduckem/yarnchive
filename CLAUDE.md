@@ -22,12 +22,14 @@ Yarnchive is a knitting companion app. It solves the core problem that knitting 
 
 ## Current Status
 
-**Phase:** Pre-development. Spec and data model complete. Setting up project structure and beginning spec-driven development with GitHub Spec Kit.
+**Phase:** Active development. Knitting view spec complete and initial tasks built. First full pattern dataset (Tolsta Tee, Size 3 F-cup, DK weight) ready for Supabase import.
 
-**What exists so far:**
+**What exists:**
 - Full data model (see `docs/data-model.docx`)
-- Key architectural decisions (see below)
+- Normalization rules (see `docs/normalization-rules.md`)
 - Project infrastructure (GitHub, Supabase, Vercel all configured)
+- Knitting view spec (`spec/01-knitting-view.md`) and initial implementation
+- Complete test dataset for Tolsta Tee pattern
 
 ---
 
@@ -49,26 +51,27 @@ Yarnchive is a knitting companion app. It solves the core problem that knitting 
 
 ```
 yarnchive/
-├── CLAUDE.md                   ← this file, read every session
-├── .env.local                  ← secrets, never commit
+├── CLAUDE.md                    ← this file, read every session
+├── .env.local                   ← secrets, never commit
 ├── docs/
-│   ├── data-model.docx         ← full entity reference with field definitions
-│   └── decisions.md            ← log of architectural decisions and why
+│   ├── data-model.docx          ← full entity reference with field definitions
+│   ├── normalization-rules.md   ← rules for entering pattern data consistently
+│   └── decisions.md             ← log of architectural decisions and why
 ├── spec/
-│   └── *.md                    ← feature specs (human-readable requirements)
+│   └── *.md                     ← feature specs (human-readable requirements)
 ├── plan/
-│   └── *.md                    ← technical plans generated from specs
+│   └── *.md                     ← technical plans generated from specs
 ├── tasks/
-│   └── *.md                    ← implementation task lists generated from plans
+│   └── *.md                     ← implementation task lists generated from plans
 └── src/
-    ├── components/             ← React components
-    ├── pages/                  ← top-level route pages
-    ├── hooks/                  ← custom React hooks
+    ├── components/              ← React components
+    ├── pages/                   ← top-level route pages
+    ├── hooks/                   ← custom React hooks
     ├── lib/
-    │   ├── supabase.ts         ← Supabase client
-    │   └── utils.ts            ← shared utilities
-    ├── types/                  ← TypeScript type definitions
-    └── styles/                 ← global styles
+    │   ├── supabase.ts          ← Supabase client
+    │   └── utils.ts             ← shared utilities
+    ├── types/                   ← TypeScript type definitions
+    └── styles/                  ← global styles
 ```
 
 ---
@@ -92,11 +95,12 @@ Full field-level reference is in `docs/data-model.docx`. Key entities:
 
 **Pattern Library (shared, no duplicates across users)**
 - `pattern` — core pattern record
-- `pattern_size` — size variants (XS/S/M/L etc). Every pattern has at least one.
-- `pattern_step` — individual steps. Has three instruction fields (before, stitch, after) plus metadata.
+- `pattern_variant` — weight or construction variants of a pattern (e.g. DK vs Worsted)
+- `pattern_size` — size variants scoped to a variant. Every pattern has at least one.
+- `pattern_step` — individual steps with three instruction fields plus metadata
 - `repeat_group` — groups steps that repeat together as a block
-- `stitch_def` — stitch directory. Abbreviations, definitions, images, videos.
-- `pattern_yarn` / `pattern_needle` / `pattern_notion` — supply requirements, scoped to size
+- `stitch_def` — stitch directory with abbreviations, definitions, images, videos
+- `pattern_yarn` / `pattern_needle` / `pattern_notion` — supply requirements scoped to size
 
 **User Space (private per user)**
 - `user` — app user
@@ -107,29 +111,72 @@ Full field-level reference is in `docs/data-model.docx`. Key entities:
 - `project_step_state` — current step + repeat counter + offline step cache
 - `project_yarn` — which stash yarns are assigned to a project
 
+**Key schema fields on `pattern_step`:**
+- `step_type` — `instruction | note | checkpoint`
+- `section` — top-level grouping (e.g. "Yoke", "Body", "Sleeves")
+- `subsection` — optional detail grouping (e.g. "Neckband", "Raglan Increases")
+- `step_label` — nullable text, stores source pattern reference (e.g. "Round 3", "Short Row 1")
+- `side` — `RS | WS | null`
+- `instructions_before` — prose only, displayed before stitches
+- `stitch_instructions` — stitch abbreviations with `[bracket]` markup and `|` line breaks
+- `instructions_after` — prose only, displayed after stitches
+- `repeat_group_id` — links to `repeat_group` for multi-step repeat blocks
+- `repeat_total` — how many times this step repeats (null = measurement-based)
+- `repeat_condition` — human-readable stop condition for measurement-based repeats
+- `variant_id` — nullable, scopes step to a specific pattern variant
+- `size_id` — nullable, scopes step to a specific size
+
 ---
 
 ## Key Architectural Decisions
 
-**Stitch markup format**
-Stitch abbreviations in step instructions use `[bracket]` markup, e.g. `[k2tog], [ssk]`. The app parses these tokens and renders them as tappable links to the stitch directory. Numbers within stitch instructions are highlighted in accent color in the UI.
+**Stitch bracket markup**
+Stitch abbreviations use `[bracket]` markup in `stitch_instructions`. The app parses tokens and renders them as tappable links to the stitch directory. See Stitch Bracket Parsing below for full rules.
 
 **Three-field instruction structure**
-Each step has `instructions_before`, `stitch_instructions`, and `instructions_after`. Any combination can be null. This supports pure prose steps, stitches with qualifiers, context before stitches, and pure notes.
+Each step has `instructions_before`, `stitch_instructions`, and `instructions_after`. Any of the three can be null. `instructions_before` and `instructions_after` are prose only — no stitch abbreviations. `stitch_instructions` contains only stitch content with bracket markup.
 
-**step_type enum**
-- `instruction` — actionable, shown with a completion control
-- `note` — informational, displayed differently, no completion action
-- `checkpoint` — pauses progress and prompts user confirmation before advancing
+**step_type rendering**
+- `instruction` — actionable step shown with a completion control
+- `note` — informational context displayed differently with no completion action
+- `checkpoint` — pauses progress and prompts explicit user confirmation before advancing
 
-**Repeat handling**
-Repeating steps are stored once. `project_step_state.current_repeat` tracks which iteration the user is on. The UI renders "Round 3 of 8" and does not advance until all repeats are complete.
+**Repeat handling — Model B (expanded steps)**
+Repeating steps are stored once in the database with a `repeat_total` field. When a project is created, the app expands all repeats into a flat step list. A step with `repeat_total = 8` becomes 8 steps in the project's step state. The progress counter moves on every tap. The UI also shows secondary repeat context ("Repeat 3 of 8") so the knitter understands the pattern structure. For measurement-based repeats where `repeat_total` is null, the step repeats until the user manually advances past it.
+
+**Pipe separator for long stitch sequences**
+Use `|` as a line break separator in `stitch_instructions` to group stitches into logical sets of 3–6 per line. The app renders each pipe-delimited group on its own line. Example:
+`[sm], [k1], [pm], [k12], [pm], | [k1], [pm], [k38], [pm], | [k1], [pm], [k12]`
+
+**Stitch bracket parsing rules**
+The app resolves bracket tokens in this priority order:
+1. **Exact match** on `abbreviation` in `stitch_def` — e.g. `[k]`, `[sm]`, `[m1l]`
+2. **Pipe syntax** for multi-word or display-name overrides — `[display text|stitch_def_id]` — e.g. `[Join in the round|join]`, `[Weave in ends|weave-in-ends]`
+3. **Strip trailing digits** to find base abbreviation — e.g. `[k12]` strips `12` and looks up `k`
+
+Note: abbreviations that contain digits as part of the name (e.g. `k2tog`) are found by exact match before digit stripping is attempted.
+
+**Typography rendering**
+- Bracket tokens matching a stitch_def → monospace font, tappable link to stitch directory
+- Prose surrounding stitch tokens → regular font
+- All numbers in any instruction field → highlighted in accent color automatically
+
+**Pattern variants**
+`pattern_variant` represents distinct versions of a pattern where the actual steps differ (e.g. DK weight vs Worsted weight). `pattern_size` and `pattern_step` both have a nullable `variant_id`. Steps with `variant_id = null` apply to all variants.
 
 **Pattern deduplication**
 Patterns live in a shared library. Users collect patterns via `user_pattern` (many-to-many). Personal notes are per-user. Two users knitting the same pattern share one `pattern` record.
 
 **Size as first-class entity**
-`pattern_size` allows yarn requirements and steps to differ by size. Patterns without size variants have one record labeled "One Size."
+`pattern_size` is scoped to a `pattern_variant`. Yarn requirements and steps can differ by size. Patterns without size variants have one record labeled "One Size."
+
+**step_label as source reference**
+`step_label` stores whatever the source pattern calls a given step — "Round 1", "Row 3", "Short Row 2", "Next Round" etc. This is display reference data only. The app's primary navigation uses `step_num` and the expanded project step list.
+
+**Progress display**
+- Primary: global step counter ("Step 47 of 312") — always moves on every tap
+- Secondary: repeat context ("Repeat 3 of 11") — shown when inside a repeat group
+- Tertiary: section breadcrumb ("Yoke › Raglan Increases")
 
 **Offline via PWA**
 `project_step_state.cached_steps` holds a JSON snapshot of steps around the current position. A PWA service worker caches the active project screen for offline knitting.
@@ -162,7 +209,8 @@ All user-owned data is keyed to `user_id`. Auth is handled by Supabase. Currentl
 
 ## Backlog (do not build yet)
 
-- Admin interfaces for pattern entry (CSV import works fine for now)
+- Admin interfaces for pattern entry (spreadsheet import works fine for now)
+- Automated pattern parsing from raw pattern text
 - Advanced search and filtering beyond basic matching
 - Social / sharing features
 - Time tracking per project
@@ -185,8 +233,7 @@ All user-owned data is keyed to `user_id`. Auth is handled by Supabase. Currentl
 
 **Enums (use these exact values)**
 
-Yarn weight codes:
-`0=Lace, 1=Fingering/Sock, 2=Sport, 3=DK/Light Worsted, 4=Worsted/Aran, 5=Bulky/Chunky, 6=Super Bulky, 7=Jumbo`
+Yarn weight codes: `0=Lace, 1=Fingering/Sock, 2=Sport, 3=DK/Light Worsted, 4=Worsted/Aran, 5=Bulky/Chunky, 6=Super Bulky, 7=Jumbo`
 
 Step types: `instruction | note | checkpoint`
 
@@ -198,10 +245,9 @@ Needle type: `Straight | Circular | DPNs`
 
 Notion type: `Tapestry Needle | Crochet Hook | Stitch Markers | Scissors | Cable Needle | Row Counter | Waste Yarn`
 
-Row type: `round | row | short_row | null`
-
-pattern_step.row_label: nullable text, used instead of row_num for short rows or named rows (e.g. "Short Row 1")
-pattern_step.row_type: nullable enum, controls row/round label display in knitting view
+**Stitch def ID format**
+- Single abbreviations: use the abbreviation as the ID (e.g. `k`, `p`, `sm`, `k2tog`)
+- Multi-word entries without abbreviation: use hyphenated lowercase (e.g. `long-tail-cast-on`, `weave-in-ends`, `stockinette`)
 
 ---
 
