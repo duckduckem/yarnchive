@@ -198,6 +198,11 @@ Needle type: `Straight | Circular | DPNs`
 
 Notion type: `Tapestry Needle | Crochet Hook | Stitch Markers | Scissors | Cable Needle | Row Counter | Waste Yarn`
 
+Row type: `round | row | short_row | null`
+
+pattern_step.row_label: nullable text, used instead of row_num for short rows or named rows (e.g. "Short Row 1")
+pattern_step.row_type: nullable enum, controls row/round label display in knitting view
+
 ---
 
 *Last updated: March 2026*
