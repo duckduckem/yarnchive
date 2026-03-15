@@ -2,12 +2,16 @@ export type StepType = 'instruction' | 'note' | 'checkpoint'
 
 export type Side = 'RS' | 'WS' | null
 
+export type RowType = 'round' | 'row' | 'short_row' | null
+
 export interface PatternStep {
   id: string
   step_order: number
   step_type: StepType
   side: Side
   total_repeats: number | null
+  row_label: string | null
+  row_type: RowType
   instructions_before: string | null
   stitch_instructions: string | null
   instructions_after: string | null

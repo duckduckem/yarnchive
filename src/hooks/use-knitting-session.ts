@@ -111,6 +111,7 @@ export function useKnittingSession(projectId: string): UseKnittingSessionResult 
           .from('pattern_step')
           .select(`
             id, step_order, step_type, side, total_repeats,
+            row_label, row_type,
             instructions_before, stitch_instructions, instructions_after,
             repeat_group(label)
           `)
@@ -128,6 +129,8 @@ export function useKnittingSession(projectId: string): UseKnittingSessionResult 
             step_type: row.step_type as PatternStep['step_type'],
             side: row.side as PatternStep['side'],
             total_repeats: row.total_repeats as number | null,
+            row_label: row.row_label as string | null,
+            row_type: row.row_type as PatternStep['row_type'],
             instructions_before: row.instructions_before as string | null,
             stitch_instructions: row.stitch_instructions as string | null,
             instructions_after: row.instructions_after as string | null,
