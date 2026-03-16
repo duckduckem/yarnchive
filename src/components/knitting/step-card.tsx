@@ -9,7 +9,7 @@ interface StepCardProps {
   isActive: boolean
   currentRepeat: number
   onAdvance: () => void
-  onTokenTap: (abbreviation: string) => void
+  onTokenTap: (display: string, lookupKey: string) => void
 }
 
 export default function StepCard({

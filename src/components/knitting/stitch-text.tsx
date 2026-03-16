@@ -3,7 +3,7 @@ import StitchToken from './stitch-token'
 
 interface StitchTextProps {
   text: string
-  onTokenTap: (abbreviation: string) => void
+  onTokenTap: (display: string, lookupKey: string) => void
 }
 
 export default function StitchText({ text, onTokenTap }: StitchTextProps) {
@@ -13,7 +13,14 @@ export default function StitchText({ text, onTokenTap }: StitchTextProps) {
     <span>
       {segments.map((seg, i) => {
         if (seg.type === 'token') {
-          return <StitchToken key={i} abbreviation={seg.value} onTap={onTokenTap} />
+          return (
+            <StitchToken
+              key={i}
+              display={seg.display}
+              lookupKey={seg.lookupKey}
+              onTap={onTokenTap}
+            />
+          )
         }
         if (seg.type === 'number') {
           return <span key={i} className="text-amber-600 font-medium">{seg.value}</span>

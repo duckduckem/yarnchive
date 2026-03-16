@@ -1,15 +1,16 @@
 interface StitchTokenProps {
-  abbreviation: string
-  onTap: (abbreviation: string) => void
+  display: string
+  lookupKey: string
+  onTap: (display: string, lookupKey: string) => void
 }
 
-export default function StitchToken({ abbreviation, onTap }: StitchTokenProps) {
+export default function StitchToken({ display, lookupKey, onTap }: StitchTokenProps) {
   return (
     <button
-      onClick={() => onTap(abbreviation)}
-      className="inline underline decoration-dotted underline-offset-2 font-medium"
+      onClick={() => onTap(display, lookupKey)}
+      className="inline font-mono underline decoration-dotted underline-offset-2"
     >
-      {abbreviation}
+      {display}
     </button>
   )
 }

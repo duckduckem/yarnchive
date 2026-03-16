@@ -64,11 +64,11 @@ function KnittingActive({
   const [isFinished, setIsFinished] = useState(false)
 
   const [restartOpen, setRestartOpen] = useState(false)
-  const [activeAbbreviation, setActiveAbbreviation] = useState<string | null>(null)
+  const [activeToken, setActiveToken] = useState<{ display: string; lookupKey: string } | null>(null)
   const [stitchDefCache, setStitchDefCache] = useState<Map<string, string | null>>(new Map())
 
-  const handleFetched = useCallback((abbr: string, definition: string | null) => {
-    setStitchDefCache((prev) => new Map(prev).set(abbr, definition))
+  const handleFetched = useCallback((key: string, definition: string | null) => {
+    setStitchDefCache((prev) => new Map(prev).set(key, definition))
   }, [])
 
   const currentStepIndex = steps.findIndex((s) => s.id === currentStepId)
@@ -196,7 +196,7 @@ function KnittingActive({
           currentStepId={currentStepId}
           currentRepeat={currentRepeat}
           onAdvance={handleAdvance}
-          onTokenTap={(abbr) => setActiveAbbreviation(abbr)}
+          onTokenTap={(display, lookupKey) => setActiveToken({ display, lookupKey })}
         />
       </div>
 
@@ -215,9 +215,10 @@ function KnittingActive({
       )}
 
       <StitchDefinitionSheet
-        abbreviation={activeAbbreviation}
-        cachedDefinition={activeAbbreviation !== null ? stitchDefCache.get(activeAbbreviation) : undefined}
-        onClose={() => setActiveAbbreviation(null)}
+        display={activeToken?.display ?? null}
+        lookupKey={activeToken?.lookupKey ?? null}
+        cachedDefinition={activeToken !== null ? stitchDefCache.get(activeToken.lookupKey) : undefined}
+        onClose={() => setActiveToken(null)}
         onFetched={handleFetched}
       />
     </div>
