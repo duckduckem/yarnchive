@@ -56,10 +56,10 @@ function KnittingActive({
   // fallback (already resolved by the time this component mounts).
   const localState = readLocalState(projectId)
   const [currentStepId, setCurrentStepId] = useState(
-    localState?.currentStepId ?? stepState.current_step_id
+    localState?.currentStepId ?? stepState.current_step_id ?? steps[0].id
   )
   const [currentRepeat, setCurrentRepeat] = useState(
-    localState?.currentRepeat ?? stepState.current_repeat
+    localState?.currentRepeat ?? stepState.current_repeat ?? 1
   )
   const [isFinished, setIsFinished] = useState(false)
 
@@ -135,7 +135,7 @@ function KnittingActive({
   }
 
   function handleAdvance() {
-    const repeatsRemaining = (currentStep.total_repeats ?? 1) - currentRepeat
+    const repeatsRemaining = (currentStep.repeat_total ?? 1) - currentRepeat
 
     if (repeatsRemaining > 0) {
       const nextRepeat = currentRepeat + 1

@@ -73,8 +73,7 @@ export function useKnittingSession(projectId: string): UseKnittingSessionResult 
 
         if (!cancelled) {
           setSession({
-            // Minimal project info — only name and id are needed for offline UI
-            project: { id: projectId, name: 'Offline', status: 'In Progress', pattern_size_id: '' },
+            project: { id: projectId, name: 'Offline', status: 'In Progress', pattern_id: '', size_id: null },
             pattern_name: '',
             steps: cachedSteps,
             stepState,
@@ -86,62 +85,70 @@ export function useKnittingSession(projectId: string): UseKnittingSessionResult 
 
       // --- Online path ---
       try {
-        // 1. Fetch project + pattern name
+        // 1. Fetch project
         const { data: projectData, error: projectError } = await supabase
           .from('project')
-          .select('id, name, status, pattern_size_id, pattern_size(pattern(name))')
+          .select('id, name, status, pattern_id, size_id')
           .eq('id', projectId)
           .single()
 
-        if (projectError) throw new Error(projectError.message)
-        if (!projectData) throw new Error('Project not found.')
-
-        const patternSizeData = projectData.pattern_size as unknown as { pattern: { name: string } } | null
-        const patternName = patternSizeData?.pattern?.name ?? 'Unknown Pattern'
+        if (projectError) throw new Error(`[project] ${projectError.message}`)
+        if (!projectData) throw new Error('[project] Project not found.')
 
         const project = {
           id: projectData.id as string,
           name: projectData.name as string,
           status: projectData.status as string,
-          pattern_size_id: projectData.pattern_size_id as string,
+          pattern_id: projectData.pattern_id as string,
+          size_id: projectData.size_id as string | null,
         }
 
-        // 2. Fetch all steps for this size, ordered
-        const { data: stepsData, error: stepsError } = await supabase
+        // 1b. Fetch pattern name
+        const { data: patternData } = await supabase
+          .from('pattern')
+          .select('name')
+          .eq('id', project.pattern_id)
+          .single()
+
+        const patternName = patternData?.name ?? 'Unknown Pattern'
+
+        // 2. Fetch steps — no relationship embeds to avoid PostgREST text-FK issues.
+        // section_label is not used in this query; repeat_group labels fetched separately if needed.
+        const sizeId = project.size_id
+
+        let stepsQuery = supabase
           .from('pattern_step')
-          .select(`
-            id, step_order, step_type, side, total_repeats,
-            row_label, row_type,
-            instructions_before, stitch_instructions, instructions_after,
-            repeat_group(label)
-          `)
-          .eq('pattern_size_id', project.pattern_size_id)
-          .order('step_order', { ascending: true })
+          .select('id, step_num, step_type, side, repeat_total, instructions_before, stitch_instructions, instructions_after, repeat_group_id')
+          .eq('pattern_id', project.pattern_id)
+          .order('step_num', { ascending: true })
 
-        if (stepsError) throw new Error(stepsError.message)
-        if (!stepsData || stepsData.length === 0) throw new Error('No steps found for this pattern size.')
+        if (sizeId) {
+          stepsQuery = stepsQuery.or(`size_id.eq.${sizeId},size_id.is.null`)
+        } else {
+          stepsQuery = stepsQuery.is('size_id', null)
+        }
 
-        const steps: PatternStep[] = stepsData.map((row) => {
-          const repeatGroup = row.repeat_group as unknown as { label: string | null } | null
-          return {
-            id: row.id as string,
-            step_order: row.step_order as number,
-            step_type: row.step_type as PatternStep['step_type'],
-            side: row.side as PatternStep['side'],
-            total_repeats: row.total_repeats as number | null,
-            row_label: row.row_label as string | null,
-            row_type: row.row_type as PatternStep['row_type'],
-            instructions_before: row.instructions_before as string | null,
-            stitch_instructions: row.stitch_instructions as string | null,
-            instructions_after: row.instructions_after as string | null,
-            section_label: repeatGroup?.label ?? null,
-          }
-        })
+        const { data: stepsData, error: stepsError } = await stepsQuery
+
+        if (stepsError) throw new Error(`[steps] ${stepsError.message}`)
+        if (!stepsData || stepsData.length === 0) throw new Error('[steps] No steps found for this pattern size.')
+
+        const steps: PatternStep[] = stepsData.map((row) => ({
+          id: row.id as string,
+          step_num: row.step_num as number,
+          step_type: row.step_type as PatternStep['step_type'],
+          side: row.side as PatternStep['side'],
+          repeat_total: row.repeat_total as number | null,
+          instructions_before: row.instructions_before as string | null,
+          stitch_instructions: row.stitch_instructions as string | null,
+          instructions_after: row.instructions_after as string | null,
+          section_label: null, // populated later once repeat_group labels are needed
+        }))
 
         // Persist steps locally for offline use
         localStorage.setItem(stepsLocalKey(projectId), JSON.stringify(steps))
 
-        // 3. Fetch step state, creating it if it doesn't exist yet
+        // 3. Fetch step state
         const { data: stateData, error: stateError } = await supabase
           .from('project_step_state')
           .select('current_step_id, current_repeat, cached_steps')
@@ -161,7 +168,7 @@ export function useKnittingSession(projectId: string): UseKnittingSessionResult 
             .from('project_step_state')
             .insert(initial)
 
-          if (insertError) throw new Error(insertError.message)
+          if (insertError) throw new Error(`[step_state insert] ${insertError.message}`)
 
           stepState = {
             current_step_id: initial.current_step_id,
@@ -170,8 +177,8 @@ export function useKnittingSession(projectId: string): UseKnittingSessionResult 
           }
         } else {
           stepState = {
-            current_step_id: stateData.current_step_id as string,
-            current_repeat: stateData.current_repeat as number,
+            current_step_id: stateData.current_step_id as string | null,
+            current_repeat: stateData.current_repeat as number | null,
             cached_steps: stateData.cached_steps as PatternStep[] | null,
           }
         }

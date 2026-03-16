@@ -32,11 +32,11 @@ export default function StitchDefinitionSheet({
 
     supabase
       .from('stitch_def')
-      .select('definition')
+      .select('description')
       .eq('abbreviation', abbreviation)
       .single()
       .then(({ data }) => {
-        const result = data?.definition ?? null
+        const result = data?.description ?? null
         setDefinition(result)
         onFetched(abbreviation, result)
         setLoading(false)

@@ -2,16 +2,12 @@ export type StepType = 'instruction' | 'note' | 'checkpoint'
 
 export type Side = 'RS' | 'WS' | null
 
-export type RowType = 'round' | 'row' | 'short_row' | null
-
 export interface PatternStep {
   id: string
-  step_order: number
+  step_num: number
   step_type: StepType
   side: Side
-  total_repeats: number | null
-  row_label: string | null
-  row_type: RowType
+  repeat_total: number | null
   instructions_before: string | null
   stitch_instructions: string | null
   instructions_after: string | null
@@ -19,8 +15,8 @@ export interface PatternStep {
 }
 
 export interface ProjectStepState {
-  current_step_id: string
-  current_repeat: number
+  current_step_id: string | null
+  current_repeat: number | null
   cached_steps: PatternStep[] | null
 }
 
@@ -28,7 +24,8 @@ export interface Project {
   id: string
   name: string
   status: string
-  pattern_size_id: string
+  pattern_id: string
+  size_id: string | null
 }
 
 export interface KnittingSession {

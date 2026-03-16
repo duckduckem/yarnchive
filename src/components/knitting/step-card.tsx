@@ -19,7 +19,7 @@ export default function StepCard({
   onAdvance,
   onTokenTap,
 }: StepCardProps) {
-  const hasRepeats = (step.total_repeats ?? 1) > 1
+  const hasRepeats = (step.repeat_total ?? 1) > 1
 
   return (
     <div
@@ -56,7 +56,7 @@ export default function StepCard({
           )}
 
           {hasRepeats && (
-            <RepeatIndicator current={currentRepeat} total={step.total_repeats!} />
+            <RepeatIndicator current={currentRepeat} total={step.repeat_total!} />
           )}
         </div>
 
