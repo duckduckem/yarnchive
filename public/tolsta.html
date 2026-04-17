@@ -26,10 +26,10 @@ const COLORS = {
 };
 
 const DICT = {
-  "m1L":  { name: "make 1 Left",       type: "increase_k", def: ["With the left needle, pick up the strand between stitches from ", true, "front to back", false, ". Knit into the ", true, "back leg", false, "."] },
-  "m1R":  { name: "make 1 Right",      type: "increase_k", def: ["With the left needle, pick up the strand between stitches from ", true, "back to front", false, ". Knit into the ", true, "front leg", false, "."] },
-  "m1Lp": { name: "make 1 Left Purl",  type: "increase_p", def: ["With the left needle, pick up the strand between stitches from ", true, "front to back", false, ". Purl into the ", true, "back leg", false, "."] },
-  "m1Rp": { name: "make 1 Right Purl", type: "increase_p", def: ["With the left needle, pick up the strand between stitches from ", true, "back to front", false, ". Purl into the ", true, "front leg", false, "."] },
+  "m1L":  { name: "make 1 Left",       type: "increase_k", def: ["With the left needle, pick up the strand between stitches from ", true, "front to back", false, ". Knit into the ", true, "back leg ", false, "from ", true, "right to left", false, "."] },
+  "m1R":  { name: "make 1 Right",      type: "increase_k", def: ["With the left needle, pick up the strand between stitches from ", true, "back to front", false, ". Knit into the ", true, "front leg ", false, "from ", true, "left to right", false, "."] },
+  "m1Lp": { name: "make 1 Left purl",  type: "increase_p", def: ["With the left needle, pick up the strand between stitches from ", true, "front to back", false, ". Purl into the ", true, "back leg ", false, "from ", true, "left to right", false, "."] },
+  "m1Rp": { name: "make 1 Right purl", type: "increase_p", def: ["With the left needle, pick up the strand between stitches from ", true, "back to front", false, ". Purl into the ", true, "front leg ", false, "from ", true, "right to left", false, "."] },
   "ssk":  { name: "slip, slip, knit",  type: "decrease",   def: ["Slip two stitches ", true, "one at a time knitwise", false, ". Insert the left needle through the ", true, "front", false, " of both slipped stitches and knit together."] },
 };
 
