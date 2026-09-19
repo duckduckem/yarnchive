@@ -1,0 +1,18 @@
+/*
+  The one default theme (M0). Every themeable value lives here as a CSS
+  variable. M6 replaces this file's contents with output from the Figma
+  token pipeline — nothing outside this file should need to change.
+*/
+:root {
+  --color-background: #faf9f7;
+  --color-surface: #ffffff;
+  --color-text: #201a14;
+  --color-text-muted: #6b6259;
+  --color-accent: #8a5a44;
+  --color-accent-foreground: #ffffff;
+  --color-border: #e4ddd3;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --radius-card: 0.75rem;
+}
