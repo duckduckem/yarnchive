@@ -9,7 +9,7 @@
 ## Where things stand
 
 - M0.1 done (2026-09-19): new `yarnchive` repo created with the doc set; old repo archived as `yarnchive-archive`; Vercel pointed at the new repo (build fails until M0.2, expected).
-- Test patterns for M1: Nurtured (sweater) and I'm So Basic Sock. Being knit from paper for now.
+- Test patterns for M1: Nurtured (sweater) and I'm So Basic Sock. Being knit from paper for now. 
 
 ## Next task
 
