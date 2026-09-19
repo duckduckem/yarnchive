@@ -8,30 +8,19 @@
 
 ## Where things stand
 
-- Planning is done. The full doc set (this file, README, CLAUDE.md, and everything in `/docs`) was drafted on 2026-09-19.
-- Nothing is built in the new repo yet.
-- The old repo and the old Supabase project are being retired, not migrated (see `docs/decisions.md`, 2026-09-19 — True fresh start).
-- Test patterns for M1: **Nurtured** (sweater) and **I'm So Basic Sock** (socks). Both are already on the needles and being knit from paper for now.
+- M0.1 done (2026-09-19): new `yarnchive` repo created with the doc set; old repo archived as `yarnchive-archive`; Vercel pointed at the new repo (build fails until M0.2, expected).
+- Test patterns for M1: Nurtured (sweater) and I'm So Basic Sock. Being knit from paper for now.
 
 ## Next task
 
-**M0.1 — New repo + docs** *(you, no Claude Code, ~30 min)*
-
-1. On GitHub, rename the current repo to `yarnchive-archive`.
-2. Create a new empty repo named `yarnchive`.
-3. Clone it locally (don't use the web uploader; it flattens folders).
-4. Copy in this doc set, keeping the folder structure.
-5. Create `/patterns-private/` locally, add it to `.gitignore`, and put the two pattern PDFs there. Pattern PDFs never get committed.
-6. Commit and push.
-7. In Vercel, point the existing project at the new repo. It's fine if the build fails until M0.2.
-
-**Then:** M0.2 — scaffold the app (see `docs/ROADMAP.md`).
+**M0.2: Scaffold the app** (Claude Code, one session)
+Vite + React + TypeScript + Tailwind, theme tokens as CSS variables with one default theme, phone-first placeholder page, Vercel build working. See `docs/ROADMAP.md`.
 
 ## Open questions (answer when convenient)
 
-- Which size are you knitting for Nurtured, and which for the socks? M1 only needs your sizes entered.
-- Roughly where are you in each pattern? It decides how far "start at step N" needs to jump.
-- Anything in the old Supabase project worth keeping? Probably not. Just confirm before deleting it.
+- Which size are you knitting for Nurtured, and which for the socks? M1 only needs your sizes entered. - Nurutured is size 3. Socks are size L
+- Roughly where are you in each pattern? It decides how far "start at step N" needs to jump. - Nurtured I'm mid-way through the first sleeve. Socks I'm in the middle of the leg.
+- Anything in the old Supabase project worth keeping? Probably not. Just confirm before deleting it. - Nothing worth keeping
 
 ---
 
