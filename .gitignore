@@ -1,0 +1,13 @@
+# Private pattern files (licensed for personal use)
+/patterns-private/
+
+# Environment
+.env
+.env.local
+
+# Dependencies and builds
+node_modules/
+dist/
+
+# OS
+.DS_Store
