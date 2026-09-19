@@ -24,6 +24,8 @@ This file tells Claude Code how to collaborate on Yarnchive. Read it at the star
 
 **Ask before major architectural moves.** New top-level folders, patterns, or state management approaches: propose first.
 
+**Don't push or open PRs from the terminal.** Stop after committing and tell me; I push and open PRs with GitHub Desktop.
+
 ## What I'm trying to avoid
 
 I have a known tendency to goldplate. Push back when you see it:
