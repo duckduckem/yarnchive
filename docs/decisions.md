@@ -12,6 +12,16 @@ Format:
 
 ---
 
+## 2026-09-19 — Tailwind v4 for theme tokens
+
+**Decision:** Use Tailwind v4 (`@tailwindcss/vite`, CSS-native `@theme`) instead of v3 + PostCSS/autoprefixer.
+
+**Why:** Theme tokens are plain CSS variables in `src/styles/theme.css`; Tailwind v4's `@theme inline` maps utility names straight to those variables with no `tailwind.config.js` needed. That file is exactly what M6's Figma pipeline is meant to swap out.
+
+**Alternatives considered:** Tailwind v3. Would work too, but adds a JS config file and a PostCSS step for no benefit here.
+
+---
+
 ## 2026-09-19 — True fresh start
 
 **Decision:** Archive the old repo (`yarnchive-archive`), start a new repo and a new Supabase project, and keep Vercel and the domains. The May 2026 start isn't resumed.

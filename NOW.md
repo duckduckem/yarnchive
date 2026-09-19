@@ -8,18 +8,16 @@
 
 ## Where things stand
 
-- M0.1 done (2026-09-19): new `yarnchive` repo created with the doc set; old repo archived as `yarnchive-archive`; Vercel pointed at the new repo (build fails until M0.2, expected).
-- Test patterns for M1: Nurtured (sweater) and I'm So Basic Sock. Being knit from paper for now. 
+- M0.1 done (2026-09-19): new `yarnchive` repo created with the doc set; old repo archived as `yarnchive-archive`; Vercel pointed at the new repo.
+- M0.2 done (2026-09-19): Vite + React + TS scaffolded, Tailwind v4 with theme tokens as CSS variables (`src/styles/theme.css`), phone-first placeholder page, `.env.example`, `vercel.json` SPA rewrite. Merged and confirmed live at yarnchive.app — styling and SPA routing fallback both verified in the browser. (Along the way: yarnchive.app was briefly serving a 9-day-stale cached deployment unrelated to this repo — resolved itself on the next deploy, but worth a glance if a future deploy looks stale.)
+- Test patterns for M1: Nurtured (sweater) and I'm So Basic Sock. Being knit from paper for now.
 
 ## Next task
 
-**M0.2: Scaffold the app** (Claude Code, one session)
-Vite + React + TypeScript + Tailwind, theme tokens as CSS variables with one default theme, phone-first placeholder page, Vercel build working. See `docs/ROADMAP.md`.
+**M0.3: New Supabase project.** Supabase CLI set up with migrations in `/supabase`. Environment variables locally and in Vercel. See `docs/ROADMAP.md`.
 
 ## Open questions (answer when convenient)
 
-- Which size are you knitting for Nurtured, and which for the socks? M1 only needs your sizes entered. - Nurutured is size 3. Socks are size L
-- Roughly where are you in each pattern? It decides how far "start at step N" needs to jump. - Nurtured I'm mid-way through the first sleeve. Socks I'm in the middle of the leg.
 - Anything in the old Supabase project worth keeping? Probably not. Just confirm before deleting it. - Nothing worth keeping
 
 ---
