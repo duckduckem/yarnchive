@@ -2,7 +2,7 @@
 
 **Coming back after a break? Read only this file.** It says where things stand and the single next thing to do.
 
-**Last updated:** 2026-09-20 (M1.1 session B)
+**Last updated:** 2026-09-20 (M1.2)
 
 ---
 
@@ -16,14 +16,15 @@
 - Test patterns for M1: Nurtured (sweater) and I'm So Basic Sock. Being knit from paper for now.
 - M1.1 session A done (2026-09-20): resolved all 14 open questions in `DATA-MODEL.md` and agreed the M1 table outline (`patterns`, `pattern_sizes`, `stitch_dictionary`, `pattern_stitch_entries`, `repeat_groups`, `steps`, `projects`, `project_progress`). Decisions recorded in `docs/decisions.md`.
 - M1.1 session B done (2026-09-20): wrote `specs/schema-v1.md` — full field/type/relationship/security spec for all 8 M1 tables, exact JSON shapes, M1.3 validation rules, and worked examples against both test patterns. Reviewed and revised: two repeat-group shapes instead of three (count vs. condition), size-varying repeat conditions via a new `repeat_groups.size_params`, a corrected sleeve-increase example, a fixed sock leg-setup example, an "ending row alignment" convention (worked through on the heel flap), and composite foreign keys so a child row's `user_id` can never disagree with its parent's. `docs/DATA-MODEL.md` now points to the spec instead of duplicating table info; added "motif round counter" to `docs/PRODUCT.md` as a Later idea. **M1.1 is complete and reviewed.**
+- M1.2 done (2026-09-20): migrations for all 8 M1 tables pushed to Supabase (`patterns`, `pattern_sizes`, `stitch_dictionary`, `pattern_stitch_entries`, `repeat_groups`, `steps`, `projects`, `project_progress`), composite FKs and RLS per `specs/schema-v1.md`. `stitch_dictionary` seeded with 22 entries (11 stitches, 11 techniques) covering both test patterns' abbreviations plus named finishing techniques (Kitchener Stitch, Magic Loop, Pick Up and Knit, Twisted German/Long-Tail Cast On) — read from the actual pattern PDFs, original wording, nothing copied from either glossary. RLS verified against the live project: signed-in reads/writes are scoped to your own rows (cross-user update/delete/insert-as-another-user all blocked), signed-out sees zero rows, `stitch_dictionary` is readable but not writable. TypeScript types generated to `src/types/database.ts` (`kind`/`step_type`/`side` come through as plain `string`, not literal unions — Supabase's generator doesn't narrow on `check` constraints, only real Postgres enums). Two decisions logged in `docs/decisions.md`: check constraints for fixed-value columns vs. import-script validation, and `project_progress.current_step_id` resets to null on delete rather than cascading. **M1.2 is complete.** One heads-up: local `main` and `origin/main` diverged during this session (an unattributed commit appeared and was pushed on its own — I amended its message locally rather than leave `"M1.2"` as the message, now `81d588e`); you'll need to force-push from GitHub Desktop next time you sync.
 
 ## Next task
 
-**M1.2: migrations and RLS for the spec.** Write the SQL migrations in `/supabase/migrations` for all 8 tables in `specs/schema-v1.md`, including the composite foreign keys and their supporting `unique(id, user_id)` constraints (§2), and seed `stitch_dictionary` with the abbreviations and techniques both test patterns use.
+**M1.3: CSV template and import script.** Local Node script in `/scripts` that validates each row (per `specs/schema-v1.md` §6) and reports errors by row, imports one pattern at a time, plus a short guide to filling in the template. `SUPABASE_SERVICE_ROLE_KEY` will need adding to `.env.local` for the script to write with elevated privileges (not currently there).
 
 ## Open questions (answer when convenient)
 
-_None right now._
+_None right now — worth watching whether the unattributed auto-commit/push happens again; if so it's a pattern worth naming rather than a one-off._
 
 ---
 

@@ -12,6 +12,24 @@ Format:
 
 ---
 
+## 2026-09-20 — Check constraints in the DB, business rules stay in the import script
+
+**Decision:** M1.2's migrations add DB `check` constraints for small fixed-value columns — `step_type`, `kind` (on both `stitch_dictionary` and `pattern_stitch_entries`), and `side`. Everything else in schema-v1.md §6 (size-label existence, repeat_groups' exactly-one-of-count/condition, cross-row JSON key consistency) stays enforced by the M1.3 import script only.
+
+**Why:** Single-column enum checks are cheap and catch bad data from any writer — the M1.3 script today, the M3 parser later, or a future UI — not just the current import path. Cross-row rules need sibling data a column check can't see, so they stay where the spec already put them.
+
+**Alternatives considered:** Push everything to the import script for consistency with the rest of §6 — rejected, since these specific checks cost nothing and outlive any one entry path.
+
+## 2026-09-20 — project_progress.current_step_id resets on delete, doesn't cascade
+
+**Decision:** `project_progress.current_step_id`'s FK uses `on delete set null` rather than cascade. schema-v1.md doesn't specify this explicitly.
+
+**Why:** Deleting a step should reset "resume at" to "not started," not silently delete the whole progress row (and with it `repeat_pass_counts` / `checkbox_states`, which have nothing to do with the deleted step).
+
+**Alternatives considered:** Cascade, matching the other composite FKs — rejected, since it would destroy progress data unrelated to the deleted step.
+
+---
+
 ## 2026-09-20 — Composite foreign keys for cross-user protection
 
 **Decision:** Every child table's foreign key to its parent (`steps.pattern_id`, `project_progress.project_id`, `steps.repeat_group_id`, etc.) is composite — `(parent_id, user_id)` references the parent's `(id, user_id)` — rather than a plain `id` reference. Parent tables that get referenced this way (`patterns`, `repeat_groups`, `steps`, `projects`) each gain an additional `unique (id, user_id)` constraint to support it.
