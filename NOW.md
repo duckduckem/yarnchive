@@ -2,7 +2,7 @@
 
 **Coming back after a break? Read only this file.** It says where things stand and the single next thing to do.
 
-**Last updated:** 2026-09-20
+**Last updated:** 2026-09-20 (M1.1 session A)
 
 ---
 
@@ -14,10 +14,11 @@
 - M0.4 done (2026-09-20): email/password sign-in via Supabase Auth, gating the app (`src/App.tsx`, `src/components/SignIn.tsx`, `src/components/Home.tsx`); signed-out visitors see only the sign-in form. Standard `user_id` + RLS pattern proven with a throwaway table (created and dropped via migrations) and recorded in `docs/ARCHITECTURE.md` for M1.2 to copy. Password sign-in chosen over magic link/OTP so nothing needs deep-link handling when Capacitor arrives in M7 — see `docs/decisions.md`.
 - **M0 is complete.** yarnchive.app shows a sign-in screen, sign-in works on your phone, and a themed placeholder loads once signed in.
 - Test patterns for M1: Nurtured (sweater) and I'm So Basic Sock. Being knit from paper for now.
+- M1.1 session A done (2026-09-20): resolved all 14 open questions in `DATA-MODEL.md` and agreed the M1 table outline (`patterns`, `pattern_sizes`, `stitch_dictionary`, `pattern_stitch_entries`, `repeat_groups`, `steps`, `projects`, `project_progress`). Decisions recorded in `docs/decisions.md`.
 
 ## Next task
 
-**M1.1: Schema spec (`specs/schema-v1.md`).** Covers patterns, sizes, steps, repeat groups, stitch dictionary with per-pattern overrides, projects, and progress. Must work for both test patterns; resolve the open questions in `docs/DATA-MODEL.md`. Review before any SQL. See `docs/ROADMAP.md`.
+**M1.1 session B: write `specs/schema-v1.md`.** Table list and relationships are settled (see session A's entries in `docs/decisions.md`, dated 2026-09-20) — this session adds fields, types, and constraints to each table, checks the result against both test patterns end to end, and gets it reviewed before any SQL (M1.2 writes the migrations).
 
 ## Open questions (answer when convenient)
 

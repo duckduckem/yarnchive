@@ -12,6 +12,104 @@ Format:
 
 ---
 
+## 2026-09-20 — Progress: step, repeat counts, and checkboxes persist; strikethroughs don't
+
+**Decision:** `project_progress` persists current step, repeat-group pass counts, and condition-checkbox states. Per-stitch strikethrough state (KNIT-02) is not saved — it resets when the knitter leaves a step.
+
+**Why:** Matches PROJ-02's actual requirement without persisting UI state that's cheap to lose and would otherwise add sync surface for M2's offline work.
+
+**Alternatives considered:** Persisting strikethrough state too (rejected — no real use case, conflicts with keeping progress writes simple for M2).
+
+---
+
+## 2026-09-20 — Per-size data keyed by size label
+
+**Decision:** Every per-size structure — `size_params`, `repeat_count`, `stitch_count` breakdowns, a step's applies-to-sizes list — references sizes by `label` (e.g. `"S"`, `"1"`), not by database id or numeric position.
+
+**Why:** Keeps per-size JSON self-describing (`{"S": 57, "M": 63, ...}` reads on its own) and matches what's typed into the CSV. The import script validates every label used against the pattern's actual size list, covering the lack of a database-enforced foreign key.
+
+**Alternatives considered:** Referencing `pattern_sizes.id` (rejected — needs a join for every read, produces unreadable JSON keys, for a table that's rarely written).
+
+---
+
+## 2026-09-20 — Measurement units: keep both, store as printed; canonical unit deferred
+
+**Decision:** Measurement values in instruction prose are stored as text exactly as printed (e.g. `8"/20.5 cm`), not split into separate inch/cm numeric fields. A canonical unit, and any conversion or display-preference feature, is deferred to M4.
+
+**Why:** Both units appear throughout, and no M1 feature reads a measurement as a number — it's prose, with a manual checkbox for condition-based repeats. Storing as printed avoids picking a canonical unit before a feature needs one and avoids two independently-entered numbers drifting apart.
+
+**Alternatives considered:** Inches-only (rejected — loses information for no M1 benefit); canonical + computed conversion (deferred until a display-preference feature exists).
+
+---
+
+## 2026-09-20 — Sizes stay generic; yarn-by-size stays M4
+
+**Decision:** `pattern_sizes` holds only a label and display order in M1 — no measurement-type columns — working for both Nurtured (bust, labels "1"–"9") and the socks (foot circumference, labels "S"–"XL"). Yarn quantity varying by size (Nurtured's does, the socks' doesn't) stays M4 scope (`PAT-07`).
+
+**Why:** Confirmed against both patterns; no changes needed to the existing plan.
+
+---
+
+## 2026-09-20 — Deferred for M1: no yarn label, no mid-pattern value recording
+
+**Decision:** No `yarn_label` field on steps, despite the socks switching main/contrast color by section — color changes are entered as `note` steps. Values the pattern asks you to record mid-knit (Nurtured's sleeve-round Pro Tip) also stay as `note` steps; a step type that records a value into project state is left for M2+.
+
+**Why:** Both are real KNIT-screen conveniences, not things M1 needs to prove the schema. Cheap to add later as nullable columns.
+
+**Alternatives considered:** Adding `yarn_label` now (rejected — no feature reads it yet).
+
+---
+
+## 2026-09-20 — Steps: optional link and errata note
+
+**Decision:** Steps get `link` (tutorial URL, set on a section's intro step — the sock links Cuff, Heel Flap, Heel Turn, Gusset, Toe Decreases, and Kitchener) and `errata_note` (free text, for corrections to the source pattern — the sock's Toe Decreases section repeats "rows 2 and 3" without ever defining a Row 3).
+
+**Why:** Cheap nullable additions to steps rather than new entities; `errata_note` keeps a correction traceable instead of silently vanishing.
+
+**Alternatives considered:** A `sections` entity to hold the link (rejected — sections are label fields on steps, not a table, and nothing else needs more than that yet).
+
+---
+
+## 2026-09-20 — Dictionary: stitches and techniques, pattern-only entries, renamed
+
+**Decision:** The stitch dictionary gets a `kind` field (stitch | technique) and an optional `link` field, covering both in one entity. Named, multi-row stitch patterns (Nurtured's Main Fabric Stitch Pattern) are not their own entity — M1 doesn't track motif position; the knitter does, same as the pattern itself expects. The Main Fabric Stitch Pattern is entered as a pattern-only dictionary entry, with definition text covering both the in-the-round and flat versions. The per-pattern table is renamed from `pattern_stitch_overrides` to `pattern_stitch_entries`, since it now holds pattern-only entries as well as overrides.
+
+**Why:** One dictionary matches KNIT-06's own wording. A `stitch_patterns` entity and motif-position tracking are more than M1 needs and cut against the existing rule that repeated content is duplicated as steps rather than referenced. (A motif round counter is a real Later idea, to be added to `PRODUCT.md` separately.)
+
+**Alternatives considered:** A `stitch_patterns` entity with per-project position tracking (rejected — no current feature needs it).
+
+---
+
+## 2026-09-20 — Stitch counts: labeled breakdown, not a single number
+
+**Decision:** `stitch_count` on a verify checkpoint is a labeled structure (label → per-size value), defaulting to a single "total" label for simple checks (the sock's Toe Decreases target). Checkpoints with a breakdown (Nurtured's Join Sleeves and Body: total, per sleeve, per front/back, raglan stitches) store one entry per label.
+
+**Why:** A single number can't hold Join Sleeves and Body's breakdown, and dropping it would mean the knitter can't check against the numbers the pattern actually gives.
+
+**Alternatives considered:** One number per size (rejected — loses the breakdown).
+
+---
+
+## 2026-09-20 — Steps: one mechanism for size-specific text and size-varying step counts
+
+**Decision:** A step carries an optional list of sizes it applies to. Size-specific wording (the sock's Leg section: S/XL decrease, M increases, L does nothing) and size-varying step counts (the sock's Heel Turn, whose row count is computable per size) are both entered as separate step rows sharing the same position, each tagged with the size(s) it applies to. A size with no matching row at a position has no step there. The import script validates that no size matches more than one row at the same position.
+
+**Why:** These looked like two problems but are the same shape: a step whose existence or wording depends on size.
+
+**Alternatives considered:** Separate mechanisms for text variants vs. expanded sequences (rejected — same shape); duplicating the full step list per size (rejected — multiplies identical steps).
+
+---
+
+## 2026-09-20 — Repeat groups: shapes, total-pass counts, no nesting
+
+**Decision:** `repeat_count` and `repeat_condition` are each independently nullable, giving three shapes: pure count (Yoke Shaping's raglan-decrease rounds), pure open-ended condition with no computable count (the sock's Heel Flap), and count with a per-iteration condition (Nurtured's Sleeves increases — a known number of increase rounds, each gated by a measurement checkbox). `repeat_count` always stores total passes, never "more times" — "repeat rounds 1–4, N more times" is entered as N+1. Repeat groups don't nest in M1.
+
+**Why:** All three shapes are real, used by at least one section of the two test patterns, but were only implicit before. Normalizing "more times" to a total keeps the repeat counter (KNIT-04) simple with no per-step exception. Nesting isn't needed by either pattern.
+
+**Alternatives considered:** Adding 1 to "more times" at display time instead of at entry (rejected — normalization belongs at entry, not in UI logic).
+
+---
+
 ## 2026-09-20 — Password sign-in; RLS pattern confirmed
 
 **Decision:** Sign-in uses Supabase Auth's email + password (`signInWithPassword`), not magic link or email-OTP. The standard `user_id` + RLS pattern (owner-only policies, `user_id default auth.uid()`) was proven with a throwaway table (created and dropped in M0.4's migrations) and recorded in `docs/ARCHITECTURE.md` for M1.2 to copy.
