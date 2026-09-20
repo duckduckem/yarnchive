@@ -1,0 +1,3 @@
+group_key,repeat_condition,last_repeat_note,repeat_count_S,repeat_count_M,param_LEN_S,param_LEN_M
+sleeve_inc,,[Placeholder] This is the final increase round.,2,3,,
+flap,"[Placeholder] Continue working the flap pattern until the piece measures {LEN} for your size, ending after a WS row.",,,,"1.5""/4 cm","1.75""/4.5 cm"

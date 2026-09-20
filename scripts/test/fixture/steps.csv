@@ -1,0 +1,18 @@
+step_order,step_type,section,subsection,row_or_round,side,applies_to_sizes,instructions_before,stitch_instructions,instructions_after,repeat_group_key,repeat_step_number,link,errata_note,param_N_S,param_N_M,param_LEN_S,param_LEN_M,count_total_S,count_total_M,count_partA_S,count_partA_M,count_partB_S,count_partB_M
+1,instruction,Body,Setup,Row 1,,,Cast on {N} stitches.,co,,,,,,12,16,,,,,,,,
+2,instruction,Body,Setup,Row 2,RS,S,,"k1, [dec evenly|k2tog], k1",,,,,,,,,,,,,,,
+2,instruction,Body,Setup,Row 2,RS,M,Work one row even; no shaping for this size.,k12,,,,,,,,,,,,,,,
+3,instruction,Sleeve,Increases,Round 1,,,Work the first increase round.,"k1, m1l, k1, m1r, k1",,,,,,,,,,,,,,,
+4,note,Sleeve,Increases,,,,Set up for sleeve increases.,,,sleeve_inc,,,,,,,,,,,,,
+5,instruction,Sleeve,Increases,,,,Work even until the sleeve measures {LEN} since the last increase round.,,,sleeve_inc,1,,,,,"2""/5 cm","2.5""/6.5 cm",,,,,,
+6,instruction,Sleeve,Increases,Round 2,,,,"k1, m1l, k1, m1r, k1",,sleeve_inc,2,,,,,,,,,,,,
+7,instruction,Heel,Flap,Row 1,RS,,,"sl, k1",Repeat these two stitches to the end of the row.,,,,,,,,,,,,,,
+8,instruction,Heel,Flap,Row 2,WS,,,"sl, p1",Repeat these two stitches to the end of the row.,,,,,,,,,,,,,,
+9,note,Heel,Flap,,,,Set up for the flap repeat.,,,flap,,,,,,,,,,,,,
+10,instruction,Heel,Flap,Row 3,RS,,,"sl, k1",,flap,1,,,,,,,,,,,,
+11,instruction,Heel,Flap,Row 2,WS,,,"sl, p1",,flap,2,,,,,,,,,,,,
+12,checkpoint,Body,Join,,,,Check your stitch count before continuing.,,,,,,,,,,,40,48,20,24,20,24
+13,note,Body,Finishing,,,,Switch to the contrast color yarn.,,,,,,,,,,,,,,,,
+14,instruction,Body,Finishing,Row 2,RS,,Repeat the last row once more.,"msp, k12",,,,,"Source pattern repeats ""rows 2 and 3"" but never defines a Row 3; entered as repeating Row 2 only.",,,,,,,,,,
+15,instruction,Body,Finishing,Row 1,,,Turn.,"k1, ssk, k1",,,,,,,,,,,,,,,
+16,instruction,Body,Finishing,Row 2,,M,Turn.,"k1, ssk, k1",,,,,,,,,,,,,,,
