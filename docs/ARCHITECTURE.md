@@ -34,7 +34,36 @@ Items marked **(proposed)** are the plan but haven't been confirmed in practice 
 - Every user-owned table has a `user_id` column that defaults to the signed-in user, plus Row Level Security policies limiting rows to their owner.
 - IDs are UUIDs. Patterns also have a readable `slug` field.
 - Shared reference data (the global stitch dictionary) is readable by all signed-in users and editable only through migrations or seeds.
-- Auth: Supabase Auth. M0 has one user (you). Beta testers and public sign-up come in M7.
+- Auth: Supabase Auth, email + password (`signInWithPassword`). M0 has one user (you). Beta testers and public sign-up come in M7. Chosen over magic link and email-OTP because it needs no redirect URL or deep-link handling — that machinery would otherwise have to be rebuilt for Capacitor's custom URL scheme in M7.
+
+### Standard RLS pattern
+
+Confirmed working in M0.4 with a throwaway table, then dropped. Every user-owned table (starting with M1.2) copies this shape:
+
+```sql
+create table example (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  -- ...other columns
+  created_at timestamptz not null default now()
+);
+
+alter table example enable row level security;
+
+create policy "select own rows" on example
+  for select using (auth.uid() = user_id);
+
+create policy "insert own rows" on example
+  for insert with check (auth.uid() = user_id);
+
+create policy "update own rows" on example
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "delete own rows" on example
+  for delete using (auth.uid() = user_id);
+```
+
+The `default auth.uid()` on `user_id` means inserts never need to pass it explicitly — the client just inserts the row's own data. Signed out (no JWT), every select returns zero rows rather than erroring, since `auth.uid()` is null and matches nothing.
 
 ## File storage
 

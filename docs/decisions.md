@@ -12,6 +12,16 @@ Format:
 
 ---
 
+## 2026-09-20 — Password sign-in; RLS pattern confirmed
+
+**Decision:** Sign-in uses Supabase Auth's email + password (`signInWithPassword`), not magic link or email-OTP. The standard `user_id` + RLS pattern (owner-only policies, `user_id default auth.uid()`) was proven with a throwaway table (created and dropped in M0.4's migrations) and recorded in `docs/ARCHITECTURE.md` for M1.2 to copy.
+
+**Why:** Password sign-in needs no redirect URL or deep-link handling, so nothing has to change when M7 wraps the app in Capacitor. Magic links would need a custom URL scheme registered for that; single-user with a password manager makes the password itself a non-issue.
+
+**Alternatives considered:** Magic link (convenient on web, but needs Capacitor deep-link setup later). Email OTP code (no password, but adds an email-checking step to every sign-in with no offsetting benefit for a single user).
+
+---
+
 ## 2026-09-19 — Supabase CLI workflow confirmed
 
 **Decision:** Schema changes go through the Supabase CLI: `npx supabase migration new <name>` to create a migration file in `supabase/migrations`, `npx supabase db push` to apply it to the linked project. No manual schema edits in the dashboard. CLI is a dev dependency (not global), run via `npx`.
