@@ -1,12 +1,33 @@
+import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "./lib/supabase";
+import SignIn from "./components/SignIn";
+import Home from "./components/Home";
+
 function App() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 font-sans text-text">
-      <div className="w-full max-w-sm rounded-card border border-border bg-surface p-6 text-center">
-        <h1 className="text-xl font-semibold text-accent">Yarnchive</h1>
-        <p className="mt-2 text-sm text-text-muted">Scaffold running.</p>
-      </div>
-    </div>
-  );
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  return session ? <Home /> : <SignIn />;
 }
 
 export default App;
