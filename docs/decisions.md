@@ -12,6 +12,20 @@ Format:
 
 ---
 
+## 2026-09-20 — Schema spec: repeat_count is per-size, ownership columns are per-table, sizes-list is a native array
+
+**Decision:** Writing `specs/schema-v1.md` (M1.1 session B) settled four exact shapes that the session-A decisions named but didn't fully pin down:
+- `repeat_groups.repeat_count` is JSONB, size label → total passes — not a plain integer — so it can vary by size (Yoke Shaping) or repeat the same value across sizes (Sleeve increases) with one column.
+- `project_progress.repeat_pass_counts` and `.checkbox_states` are both keyed by `repeat_group_id`, not by step id — the pass counter and the condition checkbox belong to the group, not to any one step in it.
+- Every child table (`pattern_sizes`, `pattern_stitch_entries`, `repeat_groups`, `steps`, `project_progress`) carries its own `user_id` and its own copy of the standard four RLS policies, rather than checking ownership through a join to `patterns`/`projects`. Denormalized, but keeps every policy the same one-line shape.
+- `steps.applies_to_sizes` is a native Postgres `text[]`, not JSONB — it's a flat membership list with no per-size value attached.
+
+**Why:** Session A resolved *that* these things needed to happen (repeat counts vary by size, ownership is universal, a step can apply to only some sizes) but not the exact column shape. Left ambiguous, M1.2 would have had to make these calls anyway, with less context. Deciding them here keeps the migrations a direct translation of the spec.
+
+**Alternatives considered:** A plain integer `repeat_count` with a separate override mechanism for size-varying cases (rejected — two mechanisms for one concept); RLS via a join to the parent table (rejected — breaks the copy-paste-per-table simplicity of the standard pattern); `applies_to_sizes` as JSONB (rejected — no value to attach per entry, just membership).
+
+---
+
 ## 2026-09-20 — Progress: step, repeat counts, and checkboxes persist; strikethroughs don't
 
 **Decision:** `project_progress` persists current step, repeat-group pass counts, and condition-checkbox states. Per-stitch strikethrough state (KNIT-02) is not saved — it resets when the knitter leaves a step.
