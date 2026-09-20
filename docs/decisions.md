@@ -12,6 +12,16 @@ Format:
 
 ---
 
+## 2026-09-19 — M1.3 import: direct Postgres transaction; --replace keeps the pattern row, resets progress to start
+
+**Decision:** The import script (`scripts/import-pattern.ts`) connects straight to Postgres with the service-role connection string (`SUPABASE_DB_URL`), instead of through `@supabase/supabase-js` like the rest of the app, and wraps every write in one transaction. Re-importing a pattern whose slug already exists requires `--replace`, which keeps the existing `patterns` row and only deletes-and-reinserts its `pattern_sizes` / `pattern_stitch_entries` / `repeat_groups` / `steps`.
+
+**Why:** The REST API `@supabase/supabase-js` uses has no multi-statement transactions, and "an error means nothing is written" needs a real one — especially for `--replace`, where deleting old children before inserting new ones would otherwise risk leaving a pattern with none at all if it failed partway. Keeping the `patterns` row means any `projects` row pointing at it survives, since `projects.pattern_id` cascades on the *pattern's* deletion, which this avoids.
+
+**Effect on an in-progress project:** `project_progress.current_step_id` pointed at a step `--replace` just deleted; its FK is `on delete set null`, so it resets to `null` — already defined as "not started, resume at the pattern's first step." You lose your exact place, never the project itself. Preserving exact position across a re-import is real complexity for a rare event — not built for M1.
+
+**Alternatives considered:** Delete-and-recreate the whole pattern on re-import (rejected — cascades away any project on it, per `projects.pattern_id on delete cascade`). Ordered `@supabase/supabase-js` inserts with compensating deletes on failure (rejected — weaker guarantee, actively risky for `--replace`'s delete-then-insert sequence).
+
 ## 2026-09-20 — Check constraints in the DB, business rules stay in the import script
 
 **Decision:** M1.2's migrations add DB `check` constraints for small fixed-value columns — `step_type`, `kind` (on both `stitch_dictionary` and `pattern_stitch_entries`), and `side`. Everything else in schema-v1.md §6 (size-label existence, repeat_groups' exactly-one-of-count/condition, cross-row JSON key consistency) stays enforced by the M1.3 import script only.
