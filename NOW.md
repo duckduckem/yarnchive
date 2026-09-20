@@ -2,7 +2,7 @@
 
 **Coming back after a break? Read only this file.** It says where things stand and the single next thing to do.
 
-**Last updated:** 2026-09-20 (M1.1 session A)
+**Last updated:** 2026-09-20 (M1.1 session B)
 
 ---
 
@@ -15,10 +15,11 @@
 - **M0 is complete.** yarnchive.app shows a sign-in screen, sign-in works on your phone, and a themed placeholder loads once signed in.
 - Test patterns for M1: Nurtured (sweater) and I'm So Basic Sock. Being knit from paper for now.
 - M1.1 session A done (2026-09-20): resolved all 14 open questions in `DATA-MODEL.md` and agreed the M1 table outline (`patterns`, `pattern_sizes`, `stitch_dictionary`, `pattern_stitch_entries`, `repeat_groups`, `steps`, `projects`, `project_progress`). Decisions recorded in `docs/decisions.md`.
+- M1.1 session B done (2026-09-20): wrote `specs/schema-v1.md` — full field/type/relationship/security spec for all 8 M1 tables, exact JSON shapes, M1.3 validation rules, and worked examples against both test patterns. Reviewed and revised: two repeat-group shapes instead of three (count vs. condition), size-varying repeat conditions via a new `repeat_groups.size_params`, a corrected sleeve-increase example, a fixed sock leg-setup example, an "ending row alignment" convention (worked through on the heel flap), and composite foreign keys so a child row's `user_id` can never disagree with its parent's. `docs/DATA-MODEL.md` now points to the spec instead of duplicating table info; added "motif round counter" to `docs/PRODUCT.md` as a Later idea. **M1.1 is complete and reviewed.**
 
 ## Next task
 
-**M1.1 session B: write `specs/schema-v1.md`.** Table list and relationships are settled (see session A's entries in `docs/decisions.md`, dated 2026-09-20) — this session adds fields, types, and constraints to each table, checks the result against both test patterns end to end, and gets it reviewed before any SQL (M1.2 writes the migrations).
+**M1.2: migrations and RLS for the spec.** Write the SQL migrations in `/supabase/migrations` for all 8 tables in `specs/schema-v1.md`, including the composite foreign keys and their supporting `unique(id, user_id)` constraints (§2), and seed `stitch_dictionary` with the abbreviations and techniques both test patterns use.
 
 ## Open questions (answer when convenient)
 
