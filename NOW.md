@@ -10,15 +10,16 @@
 
 - M0.1 done (2026-09-19): new `yarnchive` repo created with the doc set; old repo archived as `yarnchive-archive`; Vercel pointed at the new repo.
 - M0.2 done (2026-09-19): Vite + React + TS scaffolded, Tailwind v4 with theme tokens as CSS variables (`src/styles/theme.css`), phone-first placeholder page, `.env.example`, `vercel.json` SPA rewrite. Merged and confirmed live at yarnchive.app — styling and SPA routing fallback both verified in the browser. (Along the way: yarnchive.app was briefly serving a 9-day-stale cached deployment unrelated to this repo — resolved itself on the next deploy, but worth a glance if a future deploy looks stale.)
+- M0.3 done (2026-09-19): Supabase CLI added as a dev dependency (`npx supabase`), `/supabase` initialized and linked to the new project. `@supabase/supabase-js` added with a single client module at `src/lib/supabase.ts`. Migrations workflow confirmed in `docs/ARCHITECTURE.md` (CLI + `/supabase/migrations`, no dashboard edits) and recorded in `docs/decisions.md`.
 - Test patterns for M1: Nurtured (sweater) and I'm So Basic Sock. Being knit from paper for now.
 
 ## Next task
 
-**M0.3: New Supabase project.** Supabase CLI set up with migrations in `/supabase`. Environment variables locally and in Vercel. See `docs/ROADMAP.md`.
+**M0.4: Sign-in via Supabase Auth.** A protected page that only loads when signed in. Establish the standard RLS policy pattern with one throwaway table, then remove it. See `docs/ROADMAP.md`.
 
 ## Open questions (answer when convenient)
 
-- Anything in the old Supabase project worth keeping? Probably not. Just confirm before deleting it. - Nothing worth keeping
+_None right now._
 
 ---
 
