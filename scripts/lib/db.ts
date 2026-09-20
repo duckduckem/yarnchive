@@ -7,7 +7,15 @@ import postgres from "postgres";
 import type { DictionaryEntry, ParsedPatternFile } from "./model.ts";
 
 export function connect(databaseUrl: string): postgres.Sql {
-  return postgres(databaseUrl, { max: 1 });
+  return postgres(databaseUrl, {
+    max: 1,
+    connect_timeout: 10, // seconds -- fail fast instead of hanging on a bad connection
+    idle_timeout: 5, // seconds
+    connection: {
+      statement_timeout: 15_000, // ms -- fail fast instead of hanging on a stuck query
+      lock_timeout: 10_000, // ms -- fail fast instead of hanging on a held row lock
+    },
+  });
 }
 
 export async function resolveUserId(sql: postgres.Sql, email: string): Promise<string> {

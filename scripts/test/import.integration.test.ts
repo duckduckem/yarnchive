@@ -3,6 +3,14 @@
 // Needs SUPABASE_DB_URL and IMPORT_USER_EMAIL in .env.local -- skips itself
 // (not a failure) when they aren't set, since that's local, personal
 // configuration this repo never ships a value for.
+//
+// Every DB check below opens its own short-lived connection and closes it
+// immediately (withDb), rather than holding one open for the whole test --
+// each `spawnSync` below launches import-pattern.ts as a *separate* process
+// that opens its own connection, and Supabase's session pooler (port 5432)
+// reserves a dedicated backend connection per client for its whole session.
+// Keeping a parent connection open the entire time needlessly ties up a pool
+// slot while those child connections are also trying to connect.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -34,37 +42,61 @@ function runImportCli(args: string[]): { status: number | null; output: string }
   return { status: result.status, output: `${result.stdout}\n${result.stderr}` };
 }
 
-test("import-pattern.ts against the fixture pattern", { skip: skipReason }, async (t) => {
-  // eslint/TS can't see that `skip` above already guarantees these -- they're
-  // only read when canRun is true.
-  const sql = postgres(databaseUrl as string, { max: 1 });
-  const userRows = await sql<{ id: string }[]>`select id from auth.users where email = ${userEmail as string}`;
-  assert.ok(userRows.length > 0, `no auth.users row for "${userEmail}"`);
-  const userId = userRows[0].id;
+/** Opens a connection, runs `fn`, and always closes it again before returning -- see file header. */
+async function withDb<T>(fn: (sql: postgres.Sql) => Promise<T>): Promise<T> {
+  const sql = postgres(databaseUrl as string, {
+    max: 1,
+    connect_timeout: 10,
+    idle_timeout: 5,
+    connection: { statement_timeout: 15_000, lock_timeout: 10_000 },
+  });
+  try {
+    return await fn(sql);
+  } finally {
+    await sql.end({ timeout: 3 });
+  }
+}
 
-  const countPatterns = async (): Promise<number> => {
-    const rows = await sql<{ n: string }[]>`
-      select count(*)::text as n from patterns where user_id = ${userId} and slug = 'test-swatch'
-    `;
-    return Number(rows[0].n);
-  };
-  const countSteps = async (): Promise<number> => {
-    const rows = await sql<{ n: string }[]>`
-      select count(*)::text as n from steps s
-      join patterns p on p.id = s.pattern_id
-      where p.user_id = ${userId} and p.slug = 'test-swatch'
-    `;
-    return Number(rows[0].n);
-  };
-  const cleanup = async (): Promise<void> => {
-    await sql`delete from patterns where user_id = ${userId} and slug = 'test-swatch'`;
-  };
+test("import-pattern.ts against the fixture pattern", { skip: skipReason }, async (t) => {
+  const userId = await withDb(async (sql) => {
+    const rows = await sql<{ id: string }[]>`select id from auth.users where email = ${userEmail as string}`;
+    assert.ok(rows.length > 0, `no auth.users row for "${userEmail}"`);
+    return rows[0].id;
+  });
+
+  const countPatterns = (): Promise<number> =>
+    withDb(async (sql) => {
+      const rows = await sql<{ n: string }[]>`
+        select count(*)::text as n from patterns where user_id = ${userId} and slug = 'test-swatch'
+      `;
+      return Number(rows[0].n);
+    });
+
+  const countSteps = (): Promise<number> =>
+    withDb(async (sql) => {
+      const rows = await sql<{ n: string }[]>`
+        select count(*)::text as n from steps s
+        join patterns p on p.id = s.pattern_id
+        where p.user_id = ${userId} and p.slug = 'test-swatch'
+      `;
+      return Number(rows[0].n);
+    });
+
+  const patternId = (): Promise<string | null> =>
+    withDb(async (sql) => {
+      const rows = await sql<{ id: string }[]>`
+        select id from patterns where user_id = ${userId} and slug = 'test-swatch'
+      `;
+      return rows[0]?.id ?? null;
+    });
+
+  const cleanup = (): Promise<void> =>
+    withDb(async (sql) => {
+      await sql`delete from patterns where user_id = ${userId} and slug = 'test-swatch'`;
+    });
 
   await cleanup();
-  t.after(async () => {
-    await cleanup();
-    await sql.end();
-  });
+  t.after(cleanup);
 
   await t.test("dry run reports success and writes nothing", async () => {
     const result = runImportCli(["--dir", FIXTURE_DIR, "--dry-run"]);
@@ -89,16 +121,11 @@ test("import-pattern.ts against the fixture pattern", { skip: skipReason }, asyn
   });
 
   await t.test("--replace keeps the pattern id but refreshes its children", async () => {
-    const before = await sql<{ id: string }[]>`
-      select id from patterns where user_id = ${userId} and slug = 'test-swatch'
-    `;
+    const before = await patternId();
     const result = runImportCli(["--dir", FIXTURE_DIR, "--replace"]);
     assert.equal(result.status, 0, result.output);
     assert.match(result.output, /Replaced pattern/);
-    const after = await sql<{ id: string }[]>`
-      select id from patterns where user_id = ${userId} and slug = 'test-swatch'
-    `;
-    assert.equal(after[0].id, before[0].id, "pattern id must survive a --replace");
+    assert.equal(await patternId(), before, "pattern id must survive a --replace");
     assert.equal(await countSteps(), 17);
   });
 });

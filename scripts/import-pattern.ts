@@ -116,7 +116,7 @@ async function main(): Promise<void> {
         `${summary.repeatGroups} repeat group(s), ${summary.steps} step(s).`,
     );
   } finally {
-    await sql.end();
+    await sql.end({ timeout: 3 });
   }
 }
 
