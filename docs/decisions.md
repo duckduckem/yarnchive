@@ -12,6 +12,14 @@ Format:
 
 ---
 
+## 2026-09-19 — Supabase CLI workflow confirmed
+
+**Decision:** Schema changes go through the Supabase CLI: `npx supabase migration new <name>` to create a migration file in `supabase/migrations`, `npx supabase db push` to apply it to the linked project. No manual schema edits in the dashboard. CLI is a dev dependency (not global), run via `npx`.
+
+**Why:** Matches the no-Homebrew constraint, keeps the CLI version pinned per-project via `package.json`/lockfile, and gives every schema change a reviewable file in git.
+
+---
+
 ## 2026-09-19 — Tailwind v4 for theme tokens
 
 **Decision:** Use Tailwind v4 (`@tailwindcss/vite`, CSS-native `@theme`) instead of v3 + PostCSS/autoprefixer.

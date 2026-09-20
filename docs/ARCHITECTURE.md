@@ -30,7 +30,7 @@ Items marked **(proposed)** are the plan but haven't been confirmed in practice 
 
 ## Data and auth
 
-- Supabase Postgres. Schema is defined in `specs/` and implemented as **migrations in `/supabase/migrations`** via the Supabase CLI **(proposed, confirm in M0.3)**. No manual schema edits in the dashboard.
+- Supabase Postgres. Schema is defined in `specs/` and implemented as **migrations in `/supabase/migrations`** via the Supabase CLI. No manual schema edits in the dashboard.
 - Every user-owned table has a `user_id` column that defaults to the signed-in user, plus Row Level Security policies limiting rows to their owner.
 - IDs are UUIDs. Patterns also have a readable `slug` field.
 - Shared reference data (the global stitch dictionary) is readable by all signed-in users and editable only through migrations or seeds.
