@@ -1,6 +1,6 @@
 # Yarnchive — Product
 
-**Last updated:** 2026-09-19
+**Last updated:** 2026-09-20
 
 ## Vision
 
@@ -63,6 +63,7 @@ Each feature has an ID (for referencing in specs, commits, and NOW.md), a short 
 | KNIT-09 | Timer | Runs while the knitting screen is open. Pause button. Auto-stops after a period of no taps (default 10 minutes, adjustable) and counts only up to the last tap. Stored as sessions (start, end). | M2 |
 | KNIT-10 | Branching steps | Steps where the knitter chooses a path. Schema supports it from M1; UI later. | Later |
 | KNIT-11 | Rich tutorials | Video or diagrams in stitch definitions. Source to be decided. | Someday |
+| KNIT-12 | Motif round counter | Track and display which round of a named multi-row stitch pattern (e.g. a 4-round lace or texture repeat) the knitter is on, including through short rows where the row sequence and the motif sequence diverge. | Later |
 
 ## Projects (PROJ)
 

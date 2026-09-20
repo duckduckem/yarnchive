@@ -1,10 +1,10 @@
 # Yarnchive — Data Model
 
-**Last updated:** 2026-09-19
+**Last updated:** 2026-09-20
 
-**Status:** This is the *input* to the M1 schema spec (`specs/schema-v1.md`). Once that spec is approved, the spec is the source of truth for tables and fields, and this file keeps only principles and the running list of open questions.
+**Status:** Table definitions now live in `specs/schema-v1.md` — that's the source of truth for M1 fields, types, relationships, and security. This file keeps only the carried-forward principles below, plus the test-pattern reference table.
 
-The earlier schema spec (May 2026) wasn't recovered. Decisions below are carried forward from earlier design sessions; field names are from those sessions and can be renamed in the M1 spec.
+The earlier schema spec (May 2026) wasn't recovered. Decisions below are carried forward from earlier design sessions; some field names differ from the M1 spec, which renamed a few (e.g. `pattern_stitch_overrides` → `pattern_stitch_entries`, `order` → `step_order`).
 
 ---
 
@@ -52,9 +52,11 @@ The earlier schema spec (May 2026) wasn't recovered. Decisions below are carried
 
 ## Entities by milestone (conceptual)
 
+M1's tables and their fields are specified in full in `specs/schema-v1.md`. This row stays only as a milestone-level pointer:
+
 | Milestone | Entities |
 |---|---|
-| M1 | patterns, pattern sizes (list only), steps, repeat groups, stitch dictionary, pattern stitch overrides, projects, project progress |
+| M1 | see `specs/schema-v1.md` |
 | M2 | pattern files, photos, project status/dates/notes, timer sessions |
 | M4 | pattern yarn/needle/notion requirements, gauge, finished measurements per size, pattern versions, people, measurements |
 | M5 | yarn catalog, yarn holdings, needle holdings, notion holdings, project yarn assignments |
@@ -63,22 +65,7 @@ The earlier schema spec (May 2026) wasn't recovered. Decisions below are carried
 
 ## Open questions for the M1 spec
 
-These came from reading the two test patterns. The M1 spec must answer each one, even if the answer is "not yet."
-
-1. **Size-specific text, not just numbers.** The sock leg setup round is a different instruction per size, and one size has no change at all. Options: substitute whole phrases through `size_params`, or let a step apply only to certain sizes. (This is the "hybrid size-variant" approach that was previously deferred; it's needed now.)
-2. **Size-variable repeat counts.** The sweater yoke repeats a different number of times per size, so `repeat_count` has to vary by size.
-3. **Count-based repeat containing a measurement condition.** Sleeve increases happen every so many inches, a set number of times. Probably fits the current model (a counted repeat group that includes a condition checkbox step), but confirm.
-4. **Stitch count breakdowns.** After joining the sweater's body and sleeves, the check is a total plus counts per sleeve, per front/back, and raglan stitches. Decide whether `stitch_count` holds one number per size or a labeled breakdown.
-5. **Named multi-row stitch patterns.** The sweater's main stitch is a 4-round pattern with separate in-the-round and flat versions. The knitter needs to know which round of the motif they're on, including during short rows, where the row switches between the knit row and the slip row partway across. Decide whether stitch patterns are their own entity and how the screen tracks position within them.
-6. **Deterministic "continue until" sequences.** The sock heel turn gives the first few rows, then says to continue the established pattern until all heel stitches are worked. The number of rows is computable per size. Proposed rule: expand into explicit rows at entry time when the count is computable, the same way AT THE SAME TIME is handled; use a condition checkbox only when it truly depends on the knitting.
-7. **Active yarn per step.** The socks switch between a main color and a contrast color by section. Decide whether steps carry a yarn label.
-8. **Techniques in the dictionary.** Both patterns rely on techniques (a specific cast-on, wrap and turn, resolving wraps, picking up stitches, Kitchener stitch), not just stitches. Dictionary entries likely need a kind (stitch or technique) and an optional link.
-9. **Tutorial links at the section level.** The sock pattern links a video per section. Decide whether sections or steps can carry links.
-10. **Units.** Measurements are given in both inches and centimeters. Store both as given, or one canonical unit with a display preference.
-11. **Values recorded mid-pattern.** The sweater asks you to note which round of the stitch pattern the first sleeve ended on, to match later pieces. M1 answer can be a note step; later this might become a step that records a value.
-12. **Pattern errors.** The sock toe section tells you to repeat rows that don't match the rows it defines. Normalized data fixes this at entry; decide whether to record an errata note on the step. Personal versions (M4) handle corrections formally.
-13. **Pattern-type-specific sizing.** The sweater is sized by bust, the socks by foot circumference. Relevant for M4, but the M1 size list should not assume bust.
-14. **Yarn quantity by size.** The sweater's yarn amount varies by size; the socks' doesn't. Relevant for M4.
+All 14 questions this section used to list were resolved in M1.1 (session A: 2026-09-20, recorded in `docs/decisions.md`; session B: `specs/schema-v1.md` turned those resolutions into fields, types, and worked examples against both test patterns). Nothing open right now — new questions belong in `NOW.md` when they come up.
 
 ---
 
