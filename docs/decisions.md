@@ -12,6 +12,26 @@ Format:
 
 ---
 
+## 2026-09-20 — Composite foreign keys for cross-user protection
+
+**Decision:** Every child table's foreign key to its parent (`steps.pattern_id`, `project_progress.project_id`, `steps.repeat_group_id`, etc.) is composite — `(parent_id, user_id)` references the parent's `(id, user_id)` — rather than a plain `id` reference. Parent tables that get referenced this way (`patterns`, `repeat_groups`, `steps`, `projects`) each gain an additional `unique (id, user_id)` constraint to support it.
+
+**Why:** RLS already stops one user from *reading* another user's rows, but a plain `pattern_id` foreign key would still allow a row's own `user_id` to disagree with its parent's `user_id` if the client ever inserted the wrong one — an app-bug risk, not the cross-user read/write RLS is designed to stop. The composite FK makes that state impossible at the database level, for the cost of one extra unique constraint per referenced parent table.
+
+**Alternatives considered:** Relying on RLS alone (rejected — RLS governs which rows a user can touch, not whether the rows they insert are internally consistent with each other); a trigger checking `user_id` matches on insert/update (rejected — a constraint doesn't need to be kept in sync with every insert path the way a trigger would).
+
+---
+
+## 2026-09-20 — Repeat groups: two shapes, not three; size-varying conditions move to size_params
+
+**Decision:** Reviewing `specs/schema-v1.md` found that repeat groups only need two shapes, not the three originally drafted. A **count group** (`repeat_count` set, `repeat_condition` null) has a passes-count that may vary by size; when the pattern also has a per-pass "work even until X" condition, that's now an ordinary step inside the group carrying its own `size_params` — not a group-level field. A **condition group** (`repeat_condition` set, `repeat_count` null) is open-ended, with a checkbox shown at the end of every pass. `repeat_groups` gains its own `size_params` column (same shape as `steps.size_params`) to fill per-size placeholders inside `repeat_condition`'s text, since the sock's heel-flap length, the sweater's body length, and its sleeve-increase spacing all vary by size. `repeat_count` is redefined as "the number of times the knitter works the grouped steps" (superseding the "total passes" phrasing in the entry below); "N more times" becomes `repeat_count = N + 1` only when the pattern's first pass is itself inside the group — when it's a standalone step before the group (now the normal case, since "work even until X" moved out of the group and onto a step), the count is entered as `N` directly.
+
+**Why:** The original three-shape model put a size-varying condition on the group itself, but that's the same "text that varies by size" problem `steps.size_params` already solves — inventing a second mechanism for it on `repeat_groups` was unnecessary once the condition text is free to live on a step instead. Splitting it out this way also resolved a real inconsistency: the sleeve-increase worked example had claimed the same repeat count applied to every size, when it doesn't.
+
+**Alternatives considered:** Keeping the "both" shape and adding size variance to `repeat_condition` directly (rejected — duplicates `size_params`, which already exists); a separate `condition_size_params` column just for the "both" case (rejected — moot once "both" is gone).
+
+---
+
 ## 2026-09-20 — Schema spec: repeat_count is per-size, ownership columns are per-table, sizes-list is a native array
 
 **Decision:** Writing `specs/schema-v1.md` (M1.1 session B) settled four exact shapes that the session-A decisions named but didn't fully pin down:
