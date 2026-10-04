@@ -15,6 +15,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import postgres from "postgres";
 
@@ -127,5 +129,94 @@ test("import-pattern.ts against the fixture pattern", { skip: skipReason }, asyn
     assert.match(result.output, /Replaced pattern/);
     assert.equal(await patternId(), before, "pattern id must survive a --replace");
     assert.equal(await countSteps(), 20);
+  });
+});
+
+test("--replace keeps a project's place, blocks when it can't, and --reset-progress resets", { skip: skipReason }, async (t) => {
+  const userId = await withDb(async (sql) => (await sql<{ id: string }[]>`select id from auth.users where email = ${userEmail as string}`)[0].id);
+  const cleanup = (): Promise<void> =>
+    withDb(async (sql) => {
+      await sql`delete from patterns where user_id = ${userId} and slug = 'test-swatch'`;
+    });
+  await cleanup();
+  const scratch = mkdtempSync(join(tmpdir(), "yarnchive-replace-"));
+  t.after(async () => {
+    await cleanup();
+    rmSync(scratch, { recursive: true, force: true });
+  });
+
+  assert.equal(runImportCli(["--dir", FIXTURE_DIR]).status, 0);
+
+  // A project sitting on pass 2 of the sleeve repeat group (fixture step_order 6).
+  const progress = () =>
+    withDb(async (sql) => {
+      const rows = await sql<
+        { id: string; current_step_id: string | null; repeat_pass_counts: Record<string, number>; step_order: number | null; repeat_group_id: string | null }[]
+      >`
+        select pp.id, pp.current_step_id, pp.repeat_pass_counts, s.step_order, s.repeat_group_id
+        from project_progress pp
+        join projects pr on pr.id = pp.project_id
+        join patterns p on p.id = pr.pattern_id
+        left join steps s on s.id = pp.current_step_id
+        where p.user_id = ${userId} and p.slug = 'test-swatch'
+      `;
+      return rows[0];
+    });
+  await withDb(async (sql) => {
+    const [pattern] = await sql<{ id: string }[]>`select id from patterns where user_id = ${userId} and slug = 'test-swatch'`;
+    const [step] = await sql<{ id: string; repeat_group_id: string }[]>`
+      select id, repeat_group_id from steps where pattern_id = ${pattern.id} and step_order = 6
+    `;
+    const [project] = await sql<{ id: string }[]>`
+      insert into projects (user_id, pattern_id, size_label) values (${userId}, ${pattern.id}, 'S') returning id
+    `;
+    await sql`
+      insert into project_progress (user_id, project_id, current_step_id, repeat_pass_counts)
+      values (${userId}, ${project.id}, ${step.id}, ${sql.json({ [step.repeat_group_id]: 2 })})
+    `;
+  });
+  const before = await progress();
+
+  await t.test("--replace with unchanged data keeps the place and re-keys the pass count", async () => {
+    const dry = runImportCli(["--dir", FIXTURE_DIR, "--replace", "--dry-run"]);
+    assert.equal(dry.status, 0, dry.output);
+    assert.match(dry.output, /1 would keep their place, 0 would be reset/);
+
+    const result = runImportCli(["--dir", FIXTURE_DIR, "--replace"]);
+    assert.equal(result.status, 0, result.output);
+    assert.match(result.output, /1 kept their place, 0 reset/);
+    const after = await progress();
+    assert.equal(after.step_order, 6);
+    assert.notEqual(after.current_step_id, before.current_step_id, "steps were recreated, so the id changes");
+    assert.deepEqual(after.repeat_pass_counts, { [after.repeat_group_id as string]: 2 });
+  });
+
+  // Same data but step_order 6 relabeled: the place can no longer be trusted.
+  for (const file of readdirSync(FIXTURE_DIR)) cpSync(join(FIXTURE_DIR, file), join(scratch, file));
+  writeFileSync(join(scratch, "steps.csv"), readFileSync(join(scratch, "steps.csv"), "utf-8").replace("6,instruction,Sleeve,Increases,Round 2,", "6,instruction,Sleeve,Increases,Round 9,"));
+  const stepsBefore = await withDb(async (sql) => Number((await sql<{ n: string }[]>`select count(*)::text as n from steps s join patterns p on p.id = s.pattern_id where p.user_id = ${userId} and p.slug = 'test-swatch'`)[0].n));
+
+  await t.test("a mismatch fails before deleting anything", async () => {
+    const kept = await progress();
+    const result = runImportCli(["--dir", scratch, "--replace"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /Nothing was written/);
+    assert.match(result.output, /--reset-progress/);
+    assert.match(result.output, /Round 2/);
+    const after = await progress();
+    assert.equal(after.current_step_id, kept.current_step_id, "same step row, untouched");
+    assert.equal(
+      await withDb(async (sql) => Number((await sql<{ n: string }[]>`select count(*)::text as n from steps s join patterns p on p.id = s.pattern_id where p.user_id = ${userId} and p.slug = 'test-swatch'`)[0].n)),
+      stepsBefore,
+    );
+  });
+
+  await t.test("--reset-progress goes ahead and resets only that project to not started", async () => {
+    const result = runImportCli(["--dir", scratch, "--replace", "--reset-progress"]);
+    assert.equal(result.status, 0, result.output);
+    assert.match(result.output, /0 kept their place, 1 reset/);
+    const after = await progress();
+    assert.equal(after.current_step_id, null);
+    assert.deepEqual(after.repeat_pass_counts, {});
   });
 });

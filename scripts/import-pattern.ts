@@ -1,6 +1,6 @@
 #!/usr/bin/env -S npx tsx
 // M1.3 import script. Usage:
-//   npm run import -- --dir patterns-private/nurtured [--dry-run] [--replace]
+//   npm run import -- --dir patterns-private/nurtured [--dry-run] [--replace] [--reset-progress]
 //
 // Validates a pattern folder's 5 CSVs (specs/schema-v1.md §6) and, unless
 // --dry-run, writes patterns/pattern_sizes/pattern_stitch_entries/
@@ -10,7 +10,8 @@
 
 import { parseArgs } from "node:util";
 import { existsSync } from "node:fs";
-import { connect, fetchGlobalDictionary, findExistingPatternId, resolveUserId, writeImport } from "./lib/db.ts";
+import { connect, fetchGlobalDictionary, findExistingPatternId, readAnchors, resolveUserId, writeImport } from "./lib/db.ts";
+import { planRemap, stepLabel, type Remap } from "./lib/remap.ts";
 import { parseAndValidate } from "./lib/validate.ts";
 import type { Issue } from "./lib/model.ts";
 
@@ -41,11 +42,12 @@ async function main(): Promise<void> {
       dir: { type: "string" },
       "dry-run": { type: "boolean", default: false },
       replace: { type: "boolean", default: false },
+      "reset-progress": { type: "boolean", default: false },
     },
   });
 
   if (!values.dir) {
-    console.error("Usage: npm run import -- --dir <pattern-folder> [--dry-run] [--replace]");
+    console.error("Usage: npm run import -- --dir <pattern-folder> [--dry-run] [--replace] [--reset-progress]");
     process.exitCode = 1;
     return;
   }
@@ -90,6 +92,23 @@ async function main(): Promise<void> {
       }
     }
 
+    // --replace with projects on the pattern: keep each place where the same
+    // step still exists, otherwise block (or reset with --reset-progress).
+    let remaps: Remap[] = [];
+    if (data && existingPatternId && values.replace) {
+      remaps = planRemap(await readAnchors(sql, userId, existingPatternId), data.steps, data.sizes.map((s) => s.label));
+      for (const r of remaps) {
+        if (r.kind !== "block") continue;
+        const old = r.anchor.step!;
+        const message =
+          `project ${r.anchor.projectId} (size ${r.anchor.size}) is at "${stepLabel(old)}" (step_order ${old.stepOrder}): ${r.reason}` +
+          (values["reset-progress"] ? " -- will be reset to the start" : " -- pass --reset-progress to reset it to the start");
+        (values["reset-progress"] ? warnings : errors).push({ file: "steps.csv", row: null, message });
+      }
+    }
+    const kept = remaps.filter((r) => r.kind === "keep").length;
+    const blocked = remaps.filter((r) => r.kind === "block").length;
+
     printIssues("Errors", errors);
     printIssues("Warnings", warnings);
 
@@ -106,15 +125,19 @@ async function main(): Promise<void> {
           `${data.stitchEntries.length} stitch entr${data.stitchEntries.length === 1 ? "y" : "ies"}, ` +
           `${data.repeatGroups.length} repeat group(s), ${data.steps.length} step(s). Nothing was written.`,
       );
+      if (remaps.length > 0) console.log(`Projects on this pattern: ${kept} would keep their place, ${blocked} would be reset (--reset-progress).`);
       return;
     }
 
-    const summary = await writeImport(sql, userId, data, { existingPatternId });
+    const summary = await writeImport(sql, userId, data, { existingPatternId, remaps, resetBlocked: values["reset-progress"] });
     console.log(
       `\n${summary.replaced ? "Replaced" : "Imported"} pattern ${summary.patternId} -- ` +
         `${summary.sizes} size(s), ${summary.stitchEntries} stitch entry/entries, ` +
         `${summary.repeatGroups} repeat group(s), ${summary.steps} step(s).`,
     );
+    if (summary.progressKept + summary.progressReset > 0) {
+      console.log(`Projects: ${summary.progressKept} kept their place, ${summary.progressReset} reset to the start.`);
+    }
   } finally {
     await sql.end({ timeout: 3 });
   }
