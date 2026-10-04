@@ -2,7 +2,7 @@
 
 **Coming back after a break? Read only this file.** It says where things stand and the single next thing to do.
 
-**Last updated:** 2026-10-4 (M1.6)
+**Last updated:** 2026-10-4 (M1.7)
 
 ---
 
@@ -20,16 +20,19 @@
 - M1.3 done (2026-09-19): CSV template (5 files) + filling guide (`scripts/template/`) and the import script (`scripts/import-pattern.ts`, `npm run import -- --dir <folder> [--dry-run] [--replace]`), covering every validation rule in `specs/schema-v1.md` §6 except rule 4 (documented instead, per the spec's own note that it isn't machine-checkable). A tiny made-up "Test Swatch" fixture (`scripts/test/fixture/`) exercises every tricky case from spec §7 and doubles as the guide's worked example and the test input. All 25 tests pass (`npm run test:import`), including the live-DB path (dry run, import, rejected re-import, `--replace`) against the real Supabase project. New dev deps: `tsx`, `csv-parse`, `postgres`, `@types/node`. Two gotchas hit and fixed along the way, worth knowing about: the DB client had no connection/query timeouts, so a bad connection string (a stray space in the password) or a held-open connection during the test's subprocess spawns just hung silently instead of erroring — fixed with `connect_timeout`/`statement_timeout`/`lock_timeout` and by not holding a connection open across subprocess calls; and the real Supabase Auth user (from M0.4) is `emschro@pm.me`, not the email tied to the Claude account used for these sessions — `IMPORT_USER_EMAIL` in `.env.local` is set correctly now. **M1.3 is complete.**
 - M1.4 done (partial: sizes 1-4 through join body and sleeves), including two updates to the schema.
 - M1.5 done (2026-10-04): knitting screen part 1 — step display, size substitution, tappable moves, definitions; temporary route `/knit/:slug/:size`.
-- M1.6 done (2026-10-04): repeats and checkpoints (KNIT-04, 05). Spec `specs/knit-navigation.md`; pure logic `src/lib/knitNav.ts` (13 tests, `npm run test:app`); progress held in memory behind `src/lib/progress.ts` (`useProgress`), in the `project_progress` shape, for M1.7 to persist. Walked Nurtured size 1 in the browser (75 steps): the 7-pass sleeve group, Previous across passes, and the breakdown checkpoint with confirm gating all work. The condition-group display (checkbox, "Repeat 3" with no total) and `last_repeat_note` are covered by unit tests only, not yet seen in the browser — Nurtured has neither; the sock heel flap in M1.8 will be the first real check. Decisions logged in `docs/decisions.md`.
+- M1.6 done (2026-10-04): repeats and checkpoints (KNIT-04, 05). Spec `specs/knit-navigation.md`; pure logic `src/lib/knitNav.ts` (13 tests, `npm run test:app`); progress held in memory behind `src/lib/progress.ts` (`useProgress`), in the `project_progress` shape, for M1.7 to persist. Walked Nurtured size 1 in the browser (75 steps): the 7-pass sleeve group, Previous across passes, and the breakdown checkpoint with confirm gating all work. The condition-group display (checkbox, "Repeat 3" with no total) and `last_repeat_note` are covered by unit tests only, not yet seen in the browser — Nurtured has neither; the sock heel flap in M1.9 will be the first real check. Decisions logged in `docs/decisions.md`.
+- M1.7 done (2026-10-04): projects and saved progress. Spec `specs/projects.md`. Projects are created with the `create_project` function; progress saves from `src/lib/progress.ts` on every change with a visible failure banner; jump-to-step has a pass field for repeat-group body steps; `/` lists projects. `--replace` now keeps each project's place by `step_order` and fails before deleting when it can't (`--reset-progress` overrides). It also fixes a latent bug where `--replace` aborted whenever a project had a position (migration `20261004120000`). Decisions logged. Not yet seen in the browser: the condition-group checkbox and `last_repeat_note`, which the socks' heel flap will show.
 
 ## Next task
 
-**M1.7** — projects: create a project, save progress, start at step N, jump to step, bare project list (PROJ-01, 02, 03, KNIT-07). Start by swapping the key in `src/lib/progress.ts` from `slug:size` to a project id and persisting to `project_progress` from inside that file; `KnitScreen` should not need to change. Per CLAUDE.md, spec first (project creation flow, jump-to-step).
+**M1.8 [you]** — Knitting screen usability pass. Design the layout, hierarchy, interactions, and default theme token values from real use of the screens; Claude Code then implements your design. Start by creating a Nurtured project in the app and knitting with it. The socks import is now M1.9 and fixes are M1.10.
 
 ## Open questions (answer when convenient)
 
 - Nurtured size 1 has a body checkpoint (step 71 in the knitting screen) with no `stitch_count`; it shows "⚠ expected count missing". Fill it in the CSV and re-import with `--replace` when convenient.
-- The knitting screen assumes a repeat group's steps are contiguous in `step_order`; the importer doesn't check that. Worth a validation rule if M1.8 data ever breaks it.
+- After your first real Nurtured re-import with a project in progress, check that the place was kept. Append new sections at the end and don't renumber existing `step_order`s.
+- Last write wins: a stale open screen on another device can overwrite newer progress (accepted for M1).
+- The knitting screen assumes a repeat group's steps are contiguous in `step_order`; the importer doesn't check that. Worth a validation rule if M1.9 data ever breaks it.
 
 ---
 
