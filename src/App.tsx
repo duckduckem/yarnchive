@@ -2,14 +2,10 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
 import SignIn from "./components/SignIn";
-import Home from "./components/Home";
 import KnitScreen from "./components/KnitScreen";
-
-// Temporary route until projects exist (M1.7): /knit/<pattern-slug>/<size-label>.
-function parseKnitRoute(pathname: string): { slug: string; size: string } | null {
-  const m = pathname.match(/^\/knit\/([^/]+)\/([^/]+)\/?$/);
-  return m ? { slug: decodeURIComponent(m[1]), size: decodeURIComponent(m[2]) } : null;
-}
+import NewProject from "./components/NewProject";
+import ProjectList from "./components/ProjectList";
+import { parseRoute } from "./lib/route";
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -35,8 +31,18 @@ function App() {
   }
 
   if (!session) return <SignIn />;
-  const knit = parseKnitRoute(window.location.pathname);
-  return knit ? <KnitScreen slug={knit.slug} size={knit.size} /> : <Home />;
+  const route = parseRoute(window.location.pathname);
+  switch (route.name) {
+    case "project":
+      return <KnitScreen projectId={route.id} />;
+    case "new-project":
+      return <NewProject />;
+    case "not-found":
+      window.location.replace("/");
+      return null;
+    default:
+      return <ProjectList />;
+  }
 }
 
 export default App;
