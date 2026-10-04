@@ -391,7 +391,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_project: {
+        Args: {
+          p_current_step_id?: string
+          p_pattern_id: string
+          p_repeat_pass_counts?: Json
+          p_size_label: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
