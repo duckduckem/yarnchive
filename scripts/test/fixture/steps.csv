@@ -17,3 +17,5 @@ step_order,step_type,section,subsection,row_or_round,side,applies_to_sizes,instr
 15,instruction,Body,Finishing,Row 1,,,Turn.,"k1, ssk, k1",,,,,,,,,,,,,,,,,
 16,instruction,Body,Finishing,Row 2,,M,Turn.,"k1, ssk, k1",,,,,,,,,,,,,,,,,
 17,instruction,Body,Finishing,Row 3,,,[Placeholder] Work the shaping {A} times across the row.,"k{A}, p1",[Placeholder] Then continue.,,,,,,,,,,,,,,,2,3
+18,instruction,Body,Finishing,Row 4,,,,"K to last {A} sts, BO {A} sts, remove marker",,,,,,,,,,,,,,,,2,3
+19,instruction,Body,Finishing,Row 5,,,,"place marker, Bo, k2tog",,,,,,,,,,,,,,,,,

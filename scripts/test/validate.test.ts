@@ -20,6 +20,7 @@ const GLOBAL_DICT: DictionaryEntry[] = [
   { abbreviation: "ssk", kind: "stitch" },
   { abbreviation: "k2tog", kind: "stitch" },
   { abbreviation: "co", kind: "technique" },
+  { abbreviation: "bo", kind: "technique" },
 ];
 
 test("fixture pattern validates cleanly and parses as expected", () => {
@@ -34,7 +35,7 @@ test("fixture pattern validates cleanly and parses as expected", () => {
   assert.equal(data.sizes.length, 2);
   assert.equal(data.stitchEntries.length, 2);
   assert.equal(data.repeatGroups.length, 2);
-  assert.equal(data.steps.length, 18);
+  assert.equal(data.steps.length, 20);
 
   const sleeveInc = data.repeatGroups.find((g) => g.groupKey === "sleeve_inc");
   assert.deepEqual(sleeveInc?.repeatCount, { S: 2, M: 3 });
@@ -175,12 +176,35 @@ test("rule 12: a matching entry passes, even when other sizes are blank", () => 
   assert.equal(data?.steps[0].stitchInstructions, "k{A}");
 });
 
-test("an unresolvable stitch token is an error naming the token", () => {
+test("rule 13: an unknown first word is a warning, not an error, and the move is kept as written", () => {
+  const dir = makePatternDir({
+    "steps.csv": `${STEP_HEADER}\n` + "1,instruction,Body,,,,,,Zzqq to the end,,,,,\n",
+  });
+  const { errors, warnings, data } = parseAndValidate(dir, GLOBAL_DICT);
+  assert.deepEqual(errors, []);
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0].file, "steps.csv");
+  assert.equal(warnings[0].row, 2);
+  assert.match(warnings[0].message, /unknown first word "Zzqq"/);
+  assert.equal(data?.steps[0].stitchInstructions, "Zzqq to the end");
+});
+
+test("rule 13: abbreviation moves with connector text, plain actions, and mixed case produce no warnings", () => {
   const dir = makePatternDir({
     "steps.csv":
-      "step_order,step_type,section,subsection,row_or_round,side,applies_to_sizes,instructions_before,stitch_instructions,instructions_after,repeat_group_key,repeat_step_number,link,errata_note\n" +
-      "1,instruction,Body,,,,,,zzqq,,,,,\n",
+      `${STEP_HEADER},param_A_S\n` +
+      '1,instruction,Body,,,,,,"K to last {A} sts, BO {A} sts, Remove marker, bo, [dec evenly|k2tog] across",,,,,,4\n',
+  });
+  const { errors, warnings, data } = parseAndValidate(dir, GLOBAL_DICT);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(warnings, []);
+  assert.equal(data?.steps[0].stitchInstructions, "K to last {A} sts, BO {A} sts, Remove marker, bo, [dec evenly|k2tog] across");
+});
+
+test("rule 12 still applies to a placeholder inside a move", () => {
+  const dir = makePatternDir({
+    "steps.csv": `${STEP_HEADER}\n` + "1,instruction,Body,,,,,,BO {A} sts,,,,,\n",
   });
   const { errors } = parseAndValidate(dir, GLOBAL_DICT);
-  assert.ok(errors.some((e) => /unresolvable stitch token "zzqq"/.test(e.message)));
+  assert.ok(errors.some((e) => /has no size_params entry/.test(e.message)));
 });

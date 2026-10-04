@@ -110,7 +110,7 @@ test("import-pattern.ts against the fixture pattern", { skip: skipReason }, asyn
     assert.equal(result.status, 0, result.output);
     assert.match(result.output, /Imported pattern/);
     assert.equal(await countPatterns(), 1);
-    assert.equal(await countSteps(), 18);
+    assert.equal(await countSteps(), 20);
   });
 
   await t.test("importing again without --replace fails and writes nothing new", async () => {
@@ -126,6 +126,6 @@ test("import-pattern.ts against the fixture pattern", { skip: skipReason }, asyn
     assert.equal(result.status, 0, result.output);
     assert.match(result.output, /Replaced pattern/);
     assert.equal(await patternId(), before, "pattern id must survive a --replace");
-    assert.equal(await countSteps(), 18);
+    assert.equal(await countSteps(), 20);
   });
 });

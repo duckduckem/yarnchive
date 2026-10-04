@@ -1,6 +1,6 @@
 // Mechanical fixes the import script applies rather than rejecting
 // (specs/schema-v1.md §6, rule 9): Title Case for section/subsection/
-// row_or_round, lowercase comma-separated tokens for stitch_instructions.
+// row_or_round, comma-separated moves (case preserved) for stitch_instructions.
 
 const MINOR_WORDS = new Set([
   "a", "an", "and", "as", "at", "but", "by", "for", "if", "in",
@@ -21,26 +21,18 @@ export function toTitleCase(text: string): string {
     .join(" ");
 }
 
-/** Lowercases everything except `{PLACEHOLDER}` names, which are case-sensitive (spec §1). */
-function lowercaseOutsidePlaceholders(text: string): string {
-  return text
-    .split(/(\{[^{}]*\})/)
-    .map((part, i) => (i % 2 === 1 ? part : part.toLowerCase()))
-    .join("");
-}
-
-/** Splits on commas, trims, lowercases (outside `{...}`), drops empty tokens, rejoins with ", ". */
+/** Splits on commas, trims, drops empty moves, rejoins with ", ". Case is preserved (spec §1). */
 export function normalizeStitchInstructions(text: string): string {
   return text
     .split(",")
-    .map((token) => lowercaseOutsidePlaceholders(token.trim()))
-    .filter((token) => token.length > 0)
+    .map((move) => move.trim())
+    .filter((move) => move.length > 0)
     .join(", ");
 }
 
-export function tokenize(normalizedInstructions: string): string[] {
+export function splitMoves(normalizedInstructions: string): string[] {
   return normalizedInstructions
     .split(",")
-    .map((token) => token.trim())
-    .filter((token) => token.length > 0);
+    .map((move) => move.trim())
+    .filter((move) => move.length > 0);
 }

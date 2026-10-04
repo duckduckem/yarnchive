@@ -5,8 +5,8 @@
 
 import { field, readCsv } from "./csv.ts";
 import { extractSizeSuffixed, extractSubkeySizeSuffixed } from "./columns.ts";
-import { normalizeStitchInstructions, toTitleCase, tokenize } from "./normalize.ts";
-import { resolveToken } from "./tokens.ts";
+import { normalizeStitchInstructions, splitMoves, toTitleCase } from "./normalize.ts";
+import { classifyMove } from "./tokens.ts";
 import type {
   DictionaryEntry,
   Issue,
@@ -54,7 +54,7 @@ export function parseAndValidate(dir: string, globalDictionary: DictionaryEntry[
   const repeatGroups = parseRepeatGroups(repeatGroupRows, sizeLabels, errors);
   const groupKeys = new Set(repeatGroups.map((g) => g.groupKey));
 
-  const steps = parseSteps(stepRows, sizeLabels, groupKeys, patternDictionary, globalDictionary, errors);
+  const steps = parseSteps(stepRows, sizeLabels, groupKeys, patternDictionary, globalDictionary, errors, warnings);
 
   crossValidateStepOrder(steps, sizeLabels, errors);
   crossValidateRepeatGroups(repeatGroups, steps, errors);
@@ -294,6 +294,7 @@ function parseSteps(
   patternDictionary: DictionaryEntry[],
   globalDictionary: DictionaryEntry[],
   errors: Issue[],
+  warnings: Issue[],
 ): ParsedStep[] {
   const steps: ParsedStep[] = [];
   for (const { row, fields } of rows) {
@@ -341,10 +342,14 @@ function parseSteps(
     let stitchInstructions: string | null = null;
     if (stitchInstructionsRaw) {
       stitchInstructions = normalizeStitchInstructions(stitchInstructionsRaw);
-      for (const token of tokenize(stitchInstructions)) {
-        const resolution = resolveToken(token, patternDictionary, globalDictionary);
-        if (!resolution.resolved) {
-          errors.push({ file: "steps.csv", row, message: `unresolvable stitch token "${token}"` });
+      for (const move of splitMoves(stitchInstructions)) {
+        const result = classifyMove(move, patternDictionary, globalDictionary);
+        if (result.kind === "unknown") {
+          warnings.push({
+            file: "steps.csv",
+            row,
+            message: `unknown first word "${result.firstWord}" in move "${move}" (not an abbreviation or a plain action)`,
+          });
         }
       }
     }

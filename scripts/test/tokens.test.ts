@@ -1,12 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveToken } from "../lib/tokens.ts";
+import { classifyMove, resolveToken } from "../lib/tokens.ts";
 import type { DictionaryEntry } from "../lib/model.ts";
 
 const globalDict: DictionaryEntry[] = [
   { abbreviation: "k", kind: "stitch" },
   { abbreviation: "k2tog", kind: "stitch" },
   { abbreviation: "co", kind: "technique" },
+  { abbreviation: "bo", kind: "technique" },
+  { abbreviation: "turn", kind: "technique" },
 ];
 const patternDict: DictionaryEntry[] = [{ abbreviation: "co", kind: "stitch" }];
 
@@ -48,4 +50,46 @@ test("a placeholder doesn't make an unknown stitch resolve", () => {
 test("reports an unresolvable token", () => {
   const result = resolveToken("xyz99", [], globalDict);
   assert.equal(result.resolved, false);
+});
+
+test("resolveToken is case-insensitive", () => {
+  assert.equal(resolveToken("K2TOG", [], globalDict).resolved, true);
+  assert.equal(resolveToken("[Dec Evenly|K2tog]", [], globalDict).resolved, true);
+});
+
+test("classifyMove: abbreviation with connector text resolves on the first word", () => {
+  assert.equal(classifyMove("BO {a} sts", [], globalDict).kind, "abbreviation");
+  assert.equal(classifyMove("k to last {a} sts", [], globalDict).kind, "abbreviation");
+});
+
+test("classifyMove: abbreviation lookup is case-insensitive", () => {
+  for (const move of ["BO {a} sts", "bo {a} sts", "Bo {a} sts", "K2TOG"]) {
+    assert.equal(classifyMove(move, [], globalDict).kind, "abbreviation", move);
+  }
+});
+
+test("classifyMove: a placeholder first word resolves like a number", () => {
+  assert.equal(classifyMove("k{a} then more", [], globalDict).kind, "abbreviation");
+  assert.equal(classifyMove("zz{a} sts", [], globalDict).kind, "unknown");
+});
+
+test("classifyMove: a leading pipe unit is the leading abbreviation", () => {
+  const result = classifyMove("[dec evenly|k2tog] across the row", [], globalDict);
+  assert.equal(result.kind, "abbreviation");
+  assert.equal(result.firstWord, "[dec evenly|k2tog]");
+  assert.equal(classifyMove("[dec evenly|zzqq] across", [], globalDict).kind, "unknown");
+});
+
+test("classifyMove: an allowlisted plain action is valid display text", () => {
+  assert.equal(classifyMove("remove BOR marker", [], globalDict).kind, "action");
+  assert.equal(classifyMove("Place marker", [], globalDict).kind, "action");
+});
+
+test("classifyMove: a known abbreviation wins over the allowlist", () => {
+  assert.equal(classifyMove("turn work", [], globalDict).kind, "abbreviation");
+});
+
+test("classifyMove: any other first word is unknown", () => {
+  const result = classifyMove("Frobnicate the yarn", [], globalDict);
+  assert.deepEqual(result, { kind: "unknown", firstWord: "Frobnicate" });
 });
