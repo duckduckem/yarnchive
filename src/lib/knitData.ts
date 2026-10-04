@@ -3,10 +3,11 @@
 // the user; stitch_dictionary is global-read.
 import { supabase } from "./supabase";
 import type { Dictionary, Step } from "./knitText";
+import type { RepeatGroup } from "./knitNav";
 import { buildDictionary } from "./knitText";
 
 export type KnitData =
-  | { status: "ok"; patternName: string; size: string; steps: Step[]; dictionary: Dictionary }
+  | { status: "ok"; patternName: string; size: string; steps: Step[]; groups: Map<string, RepeatGroup>; dictionary: Dictionary }
   | { status: "no-pattern" }
   | { status: "no-size"; sizes: string[] }
   | { status: "error"; message: string };
@@ -38,13 +39,15 @@ export async function loadKnitData(slug: string, size: string): Promise<KnitData
     if (error) throw error;
     if (!pattern) return { status: "no-pattern" };
 
-    const [sizes, steps, entries, globals] = await Promise.all([
+    const [sizes, steps, groups, entries, globals] = await Promise.all([
       supabase.from("pattern_sizes").select("label").eq("pattern_id", pattern.id).order("display_order"),
       loadSteps(pattern.id),
+      supabase.from("repeat_groups").select("*").eq("pattern_id", pattern.id),
       supabase.from("pattern_stitch_entries").select("abbreviation, name, definition, link").eq("pattern_id", pattern.id),
       supabase.from("stitch_dictionary").select("abbreviation, name, definition, link"),
     ]);
     if (sizes.error) throw sizes.error;
+    if (groups.error) throw groups.error;
     if (entries.error) throw entries.error;
     if (globals.error) throw globals.error;
 
@@ -56,6 +59,7 @@ export async function loadKnitData(slug: string, size: string): Promise<KnitData
       patternName: pattern.name,
       size,
       steps,
+      groups: new Map(groups.data.map((g) => [g.id, g])),
       dictionary: buildDictionary(entries.data, globals.data),
     };
   } catch (e) {

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { loadKnitData, type KnitData } from "../lib/knitData";
 import { fillPlaceholders, stepPreview, stepsForSize, type Step } from "../lib/knitText";
+import { checkpointCounts, createNav, next, prev, setCheckbox, view, type Nav, type Progress, type View } from "../lib/knitNav";
+import { useProgress } from "../lib/progress";
 import Moves, { PieceText } from "./Moves";
 
 function Message({ title, children }: { title: string; children?: React.ReactNode }) {
@@ -33,9 +35,87 @@ function Prose({ text, step, size }: { text: string | null; step: Step; size: st
   );
 }
 
+const Missing = ({ children }: { children: React.ReactNode }) => (
+  <span className="rounded-card border border-danger px-1 text-danger">⚠ {children}</span>
+);
+
+function Counter({ v }: { v: View }) {
+  if (v.role !== "body") return null;
+  return (
+    <p className="text-sm font-semibold text-text">
+      Repeat {v.pass}
+      {v.group && v.group.repeat_condition === null && <> of {v.total ?? <Missing>missing</Missing>}</>}
+    </p>
+  );
+}
+
+function GroupIntro({ v, size }: { v: View; size: string }) {
+  const g = v.group;
+  if (v.role !== "intro" || !g) return null;
+  return (
+    <p className="text-lg text-text">
+      {g.repeat_condition !== null ? (
+        <>
+          Repeat until: <PieceText pieces={fillPlaceholders(g.repeat_condition, g.size_params, size)} />
+        </>
+      ) : v.total !== null ? (
+        <>Worked {v.total} times for size {size}.</>
+      ) : (
+        <Missing>repeat count missing for size {size}</Missing>
+      )}
+    </p>
+  );
+}
+
+function Checkpoint({ step, size, confirmed, onConfirm }: { step: Step; size: string; confirmed: boolean; onConfirm: (c: boolean) => void }) {
+  const counts = checkpointCounts(step.stitch_count, size);
+  return (
+    <div className="flex flex-col gap-2 rounded-card border border-border p-3">
+      <p className="text-sm font-semibold uppercase text-text-muted">Expected stitch count</p>
+      {counts ? (
+        <ul className="flex flex-col gap-1 text-lg text-text">
+          {counts.map((c) => (
+            <li key={c.label}>
+              {c.label}: {c.value === null ? <Missing>missing for size {size}</Missing> : <span className="font-semibold text-accent">{c.value}</span>}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-lg"><Missing>expected count missing</Missing></p>
+      )}
+      <label className="flex items-center gap-2 text-lg text-text">
+        <input type="checkbox" checked={confirmed} onChange={(e) => onConfirm(e.target.checked)} className="h-5 w-5" />
+        Confirm count
+      </label>
+    </div>
+  );
+}
+
+function PassEnd({ v, size, onTick }: { v: View; size: string; onTick: (ticked: boolean) => void }) {
+  const g = v.group;
+  if (v.role !== "body" || !v.isEndOfPass || !g || g.repeat_condition === null) return null;
+  return (
+    <div className="flex flex-col gap-2 rounded-card border border-border p-3">
+      <p className="text-lg text-text">
+        <PieceText pieces={fillPlaceholders(g.repeat_condition, g.size_params, size)} />
+      </p>
+      <label className="flex items-center gap-2 text-lg text-text">
+        <input type="checkbox" checked={v.conditionTicked} onChange={(e) => onTick(e.target.checked)} className="h-5 w-5" />
+        Condition met
+      </label>
+      <p className="text-sm text-text-muted">{v.conditionTicked ? "Next leaves the repeat." : "Next starts another pass."}</p>
+    </div>
+  );
+}
+
+function stepAfter(nav: Nav, p: Progress | null): Step | undefined {
+  return p ? view(nav, p).step : undefined;
+}
+
 export default function KnitScreen({ slug, size }: { slug: string; size: string }) {
   const [data, setData] = useState<KnitData | null>(null);
-  const [pos, setPos] = useState(0);
+  const [progress, setProgress] = useProgress(`${slug}:${size}`);
+  const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +127,10 @@ export default function KnitScreen({ slug, size }: { slug: string; size: string 
     };
   }, [slug, size]);
 
-  const steps = useMemo(() => (data?.status === "ok" ? stepsForSize(data.steps, size) : []), [data, size]);
+  const nav = useMemo(
+    () => (data?.status === "ok" ? createNav(stepsForSize(data.steps, size), data.groups, size) : null),
+    [data, size],
+  );
 
   if (!data) return <Message title="Loading…" />;
   if (data.status === "error") return <Message title="Couldn't load the pattern">{data.message}</Message>;
@@ -55,23 +138,33 @@ export default function KnitScreen({ slug, size }: { slug: string; size: string 
   if (data.status === "no-size") {
     return <Message title="Size not found">Size “{size}” isn't in this pattern. Available: {data.sizes.join(", ")}.</Message>;
   }
-  if (steps.length === 0) return <Message title="No steps">This pattern has no steps for size {size}.</Message>;
+  if (!nav || nav.steps.length === 0) return <Message title="No steps">This pattern has no steps for size {size}.</Message>;
 
-  const step = steps[pos];
+  const v = view(nav, progress);
+  const step = v.step;
   const side = step.side;
+  const nextProgress = next(nav, progress);
+  const prevProgress = prev(nav, progress);
+  const isCheckpoint = step.step_type === "checkpoint";
+
+  const go = (p: Progress | null) => {
+    if (!p) return;
+    setProgress(p);
+    setConfirmed(false);
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-text">
       <main className="flex flex-1 flex-col gap-4 px-4 py-4">
         <header className="text-sm text-text-muted">
           <p>
-            {data.patternName} · size {size} · step {pos + 1} of {steps.length}
+            {data.patternName} · size {size} · step {v.index + 1} of {nav.steps.length}
           </p>
         </header>
 
-        <Preview label="Previous" step={steps[pos - 1]} size={size} />
+        <Preview label="Previous" step={stepAfter(nav, prevProgress)} size={size} />
 
-        <article key={step.id} className="flex flex-col gap-4 rounded-card border border-border bg-surface p-4">
+        <article key={`${step.id}/${v.pass}`} className="flex flex-col gap-4 rounded-card border border-border bg-surface p-4">
           <div>
             <p className="text-sm text-text-muted">
               {step.section}
@@ -83,9 +176,14 @@ export default function KnitScreen({ slug, size }: { slug: string; size: string 
               {side && <span className="rounded-card border border-border px-2 text-sm text-text">{side}</span>}
             </p>
           </div>
+          <Counter v={v} />
           <Prose text={step.instructions_before} step={step} size={size} />
+          <GroupIntro v={v} size={size} />
           <Moves step={step} size={size} dictionary={data.dictionary} />
           <Prose text={step.instructions_after} step={step} size={size} />
+          {v.showLastRepeatNote && v.group && <p className="text-lg text-text">{v.group.last_repeat_note}</p>}
+          {isCheckpoint && <Checkpoint step={step} size={size} confirmed={confirmed} onConfirm={setConfirmed} />}
+          <PassEnd v={v} size={size} onTick={(t) => setProgress(setCheckbox(progress, v.group!.id, t))} />
           {step.errata_note && (
             <p className="text-sm text-text">
               <span className="font-semibold text-danger">Errata: </span>
@@ -99,22 +197,22 @@ export default function KnitScreen({ slug, size }: { slug: string; size: string 
           )}
         </article>
 
-        <Preview label="Next" step={steps[pos + 1]} size={size} />
+        <Preview label="Next" step={stepAfter(nav, nextProgress)} size={size} />
       </main>
 
       <nav className="sticky bottom-0 flex gap-2 border-t border-border bg-surface p-4">
         <button
           type="button"
-          disabled={pos === 0}
-          onClick={() => setPos(pos - 1)}
+          disabled={!prevProgress}
+          onClick={() => go(prevProgress)}
           className="flex-1 rounded-card border border-border py-4 text-lg font-medium text-text disabled:text-text-muted"
         >
           Previous
         </button>
         <button
           type="button"
-          disabled={pos === steps.length - 1}
-          onClick={() => setPos(pos + 1)}
+          disabled={!nextProgress || (isCheckpoint && !confirmed)}
+          onClick={() => go(nextProgress)}
           className="flex-1 rounded-card bg-accent py-4 text-lg font-medium text-accent-foreground disabled:opacity-50"
         >
           Next
