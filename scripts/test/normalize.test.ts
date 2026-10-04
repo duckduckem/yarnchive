@@ -15,6 +15,10 @@ test("normalizeStitchInstructions lowercases, trims, and drops empty tokens", ()
   assert.equal(normalizeStitchInstructions(" K1,  M1L ,k1, m1r,k1"), "k1, m1l, k1, m1r, k1");
 });
 
+test("normalizeStitchInstructions leaves {PLACEHOLDER} names exactly as typed", () => {
+  assert.equal(normalizeStitchInstructions("K{A}, P2, k{b}"), "k{A}, p2, k{b}");
+});
+
 test("tokenize splits a normalized instruction string back into tokens", () => {
   assert.deepEqual(tokenize("k1, m1l, k1"), ["k1", "m1l", "k1"]);
 });

@@ -33,6 +33,18 @@ test("resolves trailing-digit stripping", () => {
   assert.equal(result.source, "global");
 });
 
+test("a trailing {placeholder} resolves like a number", () => {
+  const result = resolveToken("k{a}", [], globalDict);
+  assert.equal(result.resolved, true);
+  assert.equal(result.source, "global");
+  assert.equal(resolveToken("k{LEN}", [], globalDict).resolved, true);
+});
+
+test("a placeholder doesn't make an unknown stitch resolve", () => {
+  assert.equal(resolveToken("zz{a}", [], globalDict).resolved, false);
+  assert.equal(resolveToken("{a}", [], globalDict).resolved, false);
+});
+
 test("reports an unresolvable token", () => {
   const result = resolveToken("xyz99", [], globalDict);
   assert.equal(result.resolved, false);

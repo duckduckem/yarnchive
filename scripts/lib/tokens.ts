@@ -40,7 +40,8 @@ export function resolveToken(
     if (viaPipe) return { token, resolved: true, source: viaPipe.source };
   }
 
-  const stripped = token.replace(/\d+$/, "");
+  // A trailing `{NAME}` placeholder counts as a number, so `k{a}` resolves like `k12`.
+  const stripped = token.replace(/(\d+|\{[^{}]+\})$/, "");
   if (stripped !== token && stripped.length > 0) {
     const viaStrip = lookup(stripped, patternEntries, globalEntries);
     if (viaStrip) return { token, resolved: true, source: viaStrip.source };

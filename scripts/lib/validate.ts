@@ -70,6 +70,32 @@ export function parseAndValidate(dir: string, globalDictionary: DictionaryEntry[
   };
 }
 
+/** Rule 12: every `{NAME}` in a row's text must have a matching size_params key on that row. */
+function checkPlaceholders(
+  file: string,
+  row: number,
+  texts: Record<string, string | null>,
+  sizeParams: Record<string, Record<string, string>>,
+  errors: Issue[],
+): void {
+  const keys = Object.keys(sizeParams);
+  for (const [column, text] of Object.entries(texts)) {
+    if (!text) continue;
+    for (const match of text.matchAll(/\{([^{}]+)\}/g)) {
+      const name = match[1];
+      if (keys.includes(name)) continue;
+      const wrongCase = keys.find((k) => k.toLowerCase() === name.toLowerCase());
+      errors.push({
+        file,
+        row,
+        message: wrongCase
+          ? `placeholder {${name}} in ${column} has no size_params entry; did you mean {${wrongCase}}? (names are case-sensitive)`
+          : `placeholder {${name}} in ${column} has no size_params entry (need a param_${name}_<SIZE> column with a value on this row)`,
+      });
+    }
+  }
+}
+
 function parsePattern(rows: ReturnType<typeof readCsv>, errors: Issue[]): ParsedPattern | null {
   if (rows.length === 0) {
     errors.push({ file: "pattern.csv", row: null, message: "no data row found" });
@@ -233,6 +259,8 @@ function parseRepeatGroups(
       }
     }
 
+    checkPlaceholders("repeat_groups.csv", row, { repeat_condition: repeatCondition }, sizeParams, errors);
+
     const hasCount = Object.keys(repeatCount).length > 0;
     const hasCondition = repeatCondition !== null;
     if (hasCount === hasCondition) {
@@ -347,6 +375,18 @@ function parseSteps(
         }
       }
     }
+
+    checkPlaceholders(
+      "steps.csv",
+      row,
+      {
+        instructions_before: field(fields, "instructions_before"),
+        stitch_instructions: stitchInstructions,
+        instructions_after: field(fields, "instructions_after"),
+      },
+      sizeParams,
+      errors,
+    );
 
     const rawStitchCount = extractSubkeySizeSuffixed(fields, "count");
     const stitchCountLabels = Object.keys(rawStitchCount);

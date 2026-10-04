@@ -34,7 +34,7 @@ test("fixture pattern validates cleanly and parses as expected", () => {
   assert.equal(data.sizes.length, 2);
   assert.equal(data.stitchEntries.length, 2);
   assert.equal(data.repeatGroups.length, 2);
-  assert.equal(data.steps.length, 17);
+  assert.equal(data.steps.length, 18);
 
   const sleeveInc = data.repeatGroups.find((g) => g.groupKey === "sleeve_inc");
   assert.deepEqual(sleeveInc?.repeatCount, { S: 2, M: 3 });
@@ -133,6 +133,46 @@ test("rule 11: a repeat group referenced with no intro note step is an error", (
   });
   const { errors } = parseAndValidate(dir, GLOBAL_DICT);
   assert.ok(errors.some((e) => /no intro note step/.test(e.message)));
+});
+
+const STEP_HEADER =
+  "step_order,step_type,section,subsection,row_or_round,side,applies_to_sizes,instructions_before,stitch_instructions,instructions_after,repeat_group_key,repeat_step_number,link,errata_note";
+
+test("rule 12: a placeholder with no size_params entry is an error, in each text column", () => {
+  const dir = makePatternDir({
+    "steps.csv":
+      `${STEP_HEADER}\n` +
+      "1,instruction,Body,,,,,Work {N} times.,,,,,,\n" +
+      "2,instruction,Body,,,,,,k{N},,,,,\n" +
+      "3,instruction,Body,,,,,,,Then work {N} more.,,,,\n",
+    "repeat_groups.csv":
+      "group_key,repeat_condition,last_repeat_note\ng,Work until {LEN}.,\n",
+  });
+  const { errors } = parseAndValidate(dir, GLOBAL_DICT);
+  const missing = errors.filter((e) => /has no size_params entry/.test(e.message));
+  assert.ok(missing.some((e) => e.file === "steps.csv" && e.row === 2 && /instructions_before/.test(e.message)));
+  assert.ok(missing.some((e) => e.file === "steps.csv" && e.row === 3 && /stitch_instructions/.test(e.message)));
+  assert.ok(missing.some((e) => e.file === "steps.csv" && e.row === 4 && /instructions_after/.test(e.message)));
+  assert.ok(missing.some((e) => e.file === "repeat_groups.csv" && /repeat_condition/.test(e.message)));
+});
+
+test("rule 12: a placeholder differing only by case is an error with a hint", () => {
+  const dir = makePatternDir({
+    "steps.csv":
+      `${STEP_HEADER},param_A_S\n` + "1,instruction,Body,,,,,,k{a},,,,,,4\n",
+  });
+  const { errors } = parseAndValidate(dir, GLOBAL_DICT);
+  assert.ok(errors.some((e) => /did you mean \{A\}/.test(e.message)));
+});
+
+test("rule 12: a matching entry passes, even when other sizes are blank", () => {
+  const dir = makePatternDir({
+    "steps.csv":
+      `${STEP_HEADER},param_A_S,param_A_M\n` + "1,instruction,Body,,,,,Work {A} times.,k{A},,,,,,4,\n",
+  });
+  const { errors, data } = parseAndValidate(dir, GLOBAL_DICT);
+  assert.deepEqual(errors, []);
+  assert.equal(data?.steps[0].stitchInstructions, "k{A}");
 });
 
 test("an unresolvable stitch token is an error naming the token", () => {

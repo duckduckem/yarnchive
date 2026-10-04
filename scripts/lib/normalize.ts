@@ -21,11 +21,19 @@ export function toTitleCase(text: string): string {
     .join(" ");
 }
 
-/** Splits on commas, trims, lowercases, drops empty tokens, rejoins with ", ". */
+/** Lowercases everything except `{PLACEHOLDER}` names, which are case-sensitive (spec §1). */
+function lowercaseOutsidePlaceholders(text: string): string {
+  return text
+    .split(/(\{[^{}]*\})/)
+    .map((part, i) => (i % 2 === 1 ? part : part.toLowerCase()))
+    .join("");
+}
+
+/** Splits on commas, trims, lowercases (outside `{...}`), drops empty tokens, rejoins with ", ". */
 export function normalizeStitchInstructions(text: string): string {
   return text
     .split(",")
-    .map((token) => token.trim().toLowerCase())
+    .map((token) => lowercaseOutsidePlaceholders(token.trim()))
     .filter((token) => token.length > 0)
     .join(", ");
 }
