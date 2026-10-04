@@ -1,6 +1,6 @@
 # Yarnchive — Roadmap
 
-**Last updated:** 2026-09-19
+**Last updated:** 2026-10-04
 
 ## How this works
 
@@ -36,8 +36,9 @@
 | M1.5 | Knitting screen, part 1: step display, stitch tokens with definitions, size substitution (KNIT-01, 02, 03, 06). |
 | M1.6 | Knitting screen, part 2: repeats and verify checkpoints (KNIT-04, 05). |
 | M1.7 | Projects: create a project, save progress, start at step N, jump to step, bare project list (PROJ-01, 02, 03, KNIT-07). All progress writes go through one module. |
-| M1.8 **[you]** | Fill in and import the socks CSV (both socks). Record any schema or template issues. |
-| M1.9 | Fix what M1.4 and M1.8 turned up. Only real problems from real use. |
+| M1.8 **[you]** | Knitting screen usability pass. You design the layout, hierarchy, interactions, and default theme token values from real use of the M1.5-M1.7 screens; Claude Code implements your design. |
+| M1.9 **[you]** | Fill in and import the socks CSV (both socks). Record any schema or template issues. |
+| M1.10 | Fix what M1.4 and M1.9 turned up. Only real problems from real use. |
 
 ## M2 — Real knitting companion
 

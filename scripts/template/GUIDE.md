@@ -191,3 +191,19 @@ in `errata_note`. See `step_order = 14` in the fixture.
 Write these in whatever case is natural; the import script normalizes them to
 Title Case. `instructions_before` / `instructions_after` should be full
 sentences, not fragments.
+
+## Re-importing while you're knitting it
+
+Add sections and re-run with `--replace`:
+
+```
+npm run import -- --dir patterns-private/nurtured --replace --dry-run
+```
+
+Each project keeps its place if the step it's on is still at the same
+`step_order` with the same section, subsection, and row/round label (its repeat
+pass and checkbox come along). So **append new sections at the end, and don't
+renumber `step_order` for steps you've already entered**. If a project's step
+moved or changed, the import stops before deleting anything and lists the
+project; fix the CSV, or pass `--reset-progress` to send just those projects
+back to the start. The dry run shows the same report. See `specs/projects.md` §5.
