@@ -53,7 +53,7 @@ Each feature has an ID (for referencing in specs, commits, and NOW.md), a short 
 | ID | Feature | Detail | When |
 |---|---|---|---|
 | KNIT-01 | Step display | Current step prominent, previous and next visible. Shows section, row or round number, and RS/WS where relevant. | M1 |
-| KNIT-02 | Stitch tokens | Stitches in an instruction are tappable. Tap to cross one off (strikethrough) as you work it; long-press or tap-and-hold to see its definition. Numbers are highlighted. | M1 |
+| KNIT-02 | Moves | Each move in an instruction (a stitch, or a stitch with connecting text like "k to last 4 sts") is tappable. Tap to cross one off (strikethrough) as you work it; long-press or tap-and-hold to see its definition. Numbers are highlighted. | M1 |
 | KNIT-03 | Size substitution | Steps show only your size's numbers and text. | M1 |
 | KNIT-04 | Repeats | Repeat groups with an intro note, a counter ("repeat 3 of 8"), notes that appear only on the last pass, and a checkbox for condition-based repeats ("until piece measures…"). | M1 |
 | KNIT-05 | Verify checkpoints | Steps that pause for a stitch-count or measurement check, showing the expected count for your size. | M1 |

@@ -12,8 +12,13 @@
 
 These apply across every table and are enforced by the M1.3 import script, not the database:
 
-- **Stitch tokens:** lowercase abbreviations, commas between all stitches in `stitch_instructions` (e.g. `k2tog, yo, k1`). Resolution order when the knitting screen looks up a token's definition: exact abbreviation match → pipe syntax `[display|id]` → trailing-digit stripping (`k12` looks up `k`). A `{NAME}` placeholder at the end of a token is treated as a number for this lookup, so `k{a}` resolves exactly like `k12`: `{a}` is stripped and `k` is looked up. The placeholder is not substituted for the exact-match or pipe steps, so `[k{a}|k]` works (display text may contain placeholders) but `[x|k{a}]` does not, the same as `[x|k12]`. A placeholder in the middle of a token (`k{a}tog`) is not supported, the same as `k12tog`. Pattern-specific entries (`pattern_stitch_entries`) are checked before the global `stitch_dictionary`.
-- **Placeholders in text:** any text column (`instructions_before`, `stitch_instructions`, `instructions_after`, `repeat_condition`) may contain `{NAME}` placeholders, filled from that row's own `size_params`. Names are case-sensitive and must match the `size_params` key exactly; no case folding is applied anywhere. In `stitch_instructions`, lowercasing normalization applies only outside `{...}`.
+- **Moves in `stitch_instructions`:** a comma-separated list of moves. A move is one unit the knitter crosses off (KNIT-02) — it may be a single abbreviation (`k2tog`), an abbreviation with connecting text (`k to last {a} sts`, `BO {a} sts`), or a plain action (`remove BOR marker`). Commas separate moves, so a move never contains a comma. Each move is classified by its **first word**, case-insensitively:
+  1. **Resolved:** the first word is a known abbreviation. That leading abbreviation gets a definition on the knitting screen; the rest of the move is display text. Lookup order: exact match → pipe syntax `[display|id]` (the bracketed unit is the leading abbreviation, `id` is looked up, and anything after it is display text) → trailing-digit stripping (`k12` looks up `k`). A trailing `{NAME}` placeholder counts as a number for this lookup, so `k{a}` resolves like `k12`. The placeholder is not substituted for the exact-match or pipe-`id` steps, so `[k{a}|k]` works (display text may contain placeholders) but `[x|k{a}]` does not, the same as `[x|k12]`. A placeholder in the middle of a word (`k{a}tog`) is not supported, the same as `k12tog`. Pattern-specific entries (`pattern_stitch_entries`) are checked before the global `stitch_dictionary`, and a known abbreviation wins over the allowlist if a word is both.
+  2. **Display text:** the first word is in the plain-action allowlist (knit, purl, work, place, remove, cut, slip, turn, and similar; the list lives in `scripts/lib/actions.ts`). Valid, no definition.
+  3. **Unknown:** any other first word. The import script warns; it is not an error.
+
+  Abbreviation lookup is case-insensitive (`BO`, `bo`, `Bo` all find `bo`). The move text is stored and displayed as written.
+- **Placeholders in text:** any text column (`instructions_before`, `stitch_instructions`, `instructions_after`, `repeat_condition`) may contain `{NAME}` placeholders, filled from that row's own `size_params`. Names are case-sensitive and must match the `size_params` key exactly; no case folding is applied anywhere. In `stitch_instructions`, text is stored exactly as written (no case normalization).
 - **Title Case** for `section`, `subsection`, and any step `label`/`row_or_round` text.
 - **Full prose sentences** in `instructions_before` and `instructions_after` — no fragments.
 - **Repeated pieces** (two sleeves, two socks, mirrored fronts) are not a schema feature — they're separate `steps` rows distinguished by `section`/`subsection` text (`"Sleeve 1"` / `"Sleeve 2"`, or `"Sock 1"` / `"Sock 2"`). **AT THE SAME TIME** cross-references are expanded into explicit interleaved steps at entry time, for the same reason: step-by-step tracking can't follow a cross-reference.
@@ -156,7 +161,7 @@ The core table. One row per instruction, note, or checkpoint.
 | `row_or_round` | text | yes | — | free text label, e.g. "Round 12" or "Rounds 1–4"; null for steps with no row/round identity |
 | `side` | text | yes | — | `'RS'` \| `'WS'`, when relevant |
 | `instructions_before` | text | yes | — | prose before the stitch instructions |
-| `stitch_instructions` | text | yes | — | tokenized stitch text |
+| `stitch_instructions` | text | yes | — | comma-separated moves; see §1 |
 | `instructions_after` | text | yes | — | prose after |
 | `size_params` | jsonb | yes | — | placeholder name → size label → value. See §5. |
 | `stitch_count` | jsonb | yes | — | only meaningful when `step_type = 'checkpoint'`. Label → size label → value. See §5. |
@@ -196,7 +201,7 @@ One row per project. Everything the knitting screen needs to resume exactly wher
 | `project_id` | uuid | no | — | FK → `projects(id)`, cascade delete; unique (1:1 with `projects`); composite with `user_id` — see §2 |
 | `current_step_id` | uuid | yes | — | FK → `steps(id)`; null means "not started," resume at the pattern's first step; composite with `user_id` — see §2 |
 | `repeat_pass_counts` | jsonb | no | `'{}'` | repeat group id → current pass number. See §5. |
-| `checkbox_states` | jsonb | no | `'{}'` | repeat group id → whether the current pass's condition checkbox is ticked. See §5. Per-stitch strikethrough state (KNIT-02) is deliberately **not** stored here — it resets when the knitter leaves a step (`docs/decisions.md`). |
+| `checkbox_states` | jsonb | no | `'{}'` | repeat group id → whether the current pass's condition checkbox is ticked. See §5. Per-move strikethrough state (KNIT-02) is deliberately **not** stored here — it resets when the knitter leaves a step (`docs/decisions.md`). |
 | `updated_at` | timestamptz | no | `now()` | |
 
 **Unique:** `(project_id)`.
@@ -320,10 +325,11 @@ The database has no cross-row constraints for most of these (sizes are labels, n
 6. `steps.stitch_count` is only accepted when `step_type = 'checkpoint'`; flagged as an error on any other step type.
 7. Within one `stitch_count` value, every label's inner object must use the same set of size labels (no label silently missing a size the others have).
 8. `pattern_stitch_entries.abbreviation` is unique per pattern; the script warns (doesn't error) if an abbreviation shadows a `stitch_dictionary` entry of a different `kind`.
-9. `section`/`subsection`/`row_or_round` are normalized to Title Case; `stitch_instructions` tokens are normalized to lowercase, comma-separated. The script fixes mechanical case issues rather than rejecting them, and only errors when a token can't be resolved at all (§1 resolution order). Placeholders inside `{...}` are left exactly as typed.
+9. `section`/`subsection`/`row_or_round` are normalized to Title Case. `stitch_instructions` is split into moves on commas, trimmed, empties dropped, and rejoined with `, `; **case is preserved**. The script fixes mechanical issues rather than rejecting them. Placeholders inside `{...}` are left exactly as typed.
 10. `projects.size_label` must match a `pattern_sizes.label` for the chosen pattern — checked at project-creation time in the app, using the same label-matching approach as the import script, since this is the same kind of soft reference.
 11. Every `repeat_groups` row has exactly one `steps` row pointing to it with `repeat_step_number` null (its intro note step) — not zero, not more than one.
 12. Every `{NAME}` placeholder used in `instructions_before`, `stitch_instructions`, `instructions_after`, or `repeat_condition` must have a matching `size_params` key on the same row (for `repeat_condition`, the group's own `size_params`). A key counts as present if at least one size has a value; blank sizes are not an error (§1, M1 data-entry scope). A missing key is a row-level error. If a key differs only by case, the error says so.
+13. Each move in `stitch_instructions` is classified by its first word (§1). A first word that is neither a known abbreviation (pattern entries, then dictionary, case-insensitive) nor in the plain-action allowlist is a **warning** naming the file, row, move, and first word. It never blocks an import. This replaces the former "unresolvable token" error.
 
 ## 7. Worked examples
 

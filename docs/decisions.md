@@ -10,6 +10,14 @@ Format:
 **Alternatives considered:** What we didn't pick and why.
 ```
 
+## 2026-10-04 — `stitch_instructions` is a list of moves, not tokens
+
+**Decision:** Each comma-separated item is a move, the unit the knitter crosses off (KNIT-02). A move is classified by its first word: a known abbreviation (resolved; the rest is display text), a word from a short plain-action allowlist (display text), or anything else (a dry-run warning, not an error). Abbreviation lookup is case-insensitive; text is stored and displayed as written. This replaces the lowercase-normalization rule for this column only. Placeholder validation (rule 12) is unchanged.
+**Why:** Real rows ("k to last {a} sts, BO {a} sts, remove BOR marker") can't be written as bare tokens, and pushing the connecting words into prose columns makes rows unreadable while knitting. Unknown first words warn rather than error so an unusual verb never blocks an import; the cost is that a typo'd abbreviation (`k2tgo`) only surfaces as a warning, so the dry run needs reading.
+**Alternatives considered:** Keeping an error for unknown tokens (blocks real patterns); free text with no resolution (loses definitions). Supersedes the per-stitch crossing-off wording of KNIT-02 and the 2026-09-20 "per-stitch strikethrough" note, which now means per move.
+
+---
+
 ## 2026-10-04 — Size placeholders in stitch tokens: exact-case, number-like for lookup
 
 **Decision:** A `{NAME}` placeholder at the end of a stitch token is treated as a number for dictionary lookup, so `k{a}` resolves like `k12`. Placeholder names are case-sensitive and must match the `size_params` key exactly; stitch-token lowercasing skips everything inside `{...}`. Every placeholder in a row's text columns must have a `size_params` entry on that row (import script rule 12).
