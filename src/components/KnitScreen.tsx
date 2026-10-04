@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import { loadKnitData, loadProject, type KnitData } from "../lib/knitData";
 import { fillPlaceholders, stepPreview, stepsForSize, type Step } from "../lib/knitText";
 import { checkpointCounts, createNav, jumpTo, next, prev, setCheckbox, view, type Nav, type Progress, type View } from "../lib/knitNav";
@@ -146,7 +147,7 @@ export default function KnitScreen({ projectId }: { projectId: string }) {
         const data = await loadKnitData(project.patternId, project.size);
         if (!cancelled) setLoaded({ status: "ok", size: project.size, data });
       } catch (e) {
-        if (!cancelled) setLoaded({ status: "error", message: e instanceof Error ? e.message : String(e) });
+        if (!cancelled) setLoaded({ status: "error", message: errorMessage(e) });
       }
     })();
     return () => {

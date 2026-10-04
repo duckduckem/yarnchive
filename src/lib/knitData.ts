@@ -1,6 +1,7 @@
 // Read-only loader for the knitting screen. Everything goes through the
 // signed-in Supabase client, so RLS scopes patterns, steps, and entries to
 // the user; stitch_dictionary is global-read.
+import { errorMessage } from "./errors";
 import { supabase } from "./supabase";
 import type { Dictionary, Step } from "./knitText";
 import type { RepeatGroup } from "./knitNav";
@@ -80,6 +81,6 @@ export async function loadKnitData(patternId: string, size: string): Promise<Kni
       dictionary: buildDictionary(entries.data, globals.data),
     };
   } catch (e) {
-    return { status: "error", message: e instanceof Error ? e.message : String(e) };
+    return { status: "error", message: errorMessage(e) };
   }
 }

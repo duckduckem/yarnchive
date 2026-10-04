@@ -4,6 +4,7 @@
 // wins. A failed save is surfaced through `save`, never swallowed, and the
 // in-memory position is kept. M2 adds offline by changing this file only.
 import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { errorMessage } from "./errors";
 import { supabase } from "./supabase";
 import { emptyProgress, type Progress } from "./knitNav";
 
@@ -41,7 +42,6 @@ const flags = (id: string) => {
   return f;
 };
 
-const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 /** Row JSON -> Progress, tolerating anything the database might hold. */
 function parseRow(row: { current_step_id: string | null; repeat_pass_counts: unknown; checkbox_states: unknown }): Progress {
@@ -63,7 +63,7 @@ async function load(projectId: string) {
     if (error) throw error;
     publish(projectId, { progress: data ? parseRow(data) : emptyProgress(), loadError: null });
   } catch (e) {
-    publish(projectId, { progress: null, loadError: messageOf(e) });
+    publish(projectId, { progress: null, loadError: errorMessage(e) });
   }
 }
 
@@ -89,7 +89,7 @@ async function flush(projectId: string) {
     );
     if (error) throw error;
   } catch (e) {
-    failure = messageOf(e);
+    failure = errorMessage(e);
   }
   f.inFlight = false;
   if (failure !== null) {

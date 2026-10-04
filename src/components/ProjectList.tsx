@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import { supabase } from "../lib/supabase";
 
 interface Row {
@@ -24,7 +25,7 @@ export default function ProjectList() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadRows().then(setRows, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+    loadRows().then(setRows, (e: unknown) => setError(errorMessage(e)));
   }, []);
 
   return (
