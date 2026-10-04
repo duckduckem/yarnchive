@@ -10,6 +10,12 @@ Format:
 **Alternatives considered:** What we didn't pick and why.
 ```
 
+## 2026-10-04 — Size placeholders in stitch tokens: exact-case, number-like for lookup
+
+**Decision:** A `{NAME}` placeholder at the end of a stitch token is treated as a number for dictionary lookup, so `k{a}` resolves like `k12`. Placeholder names are case-sensitive and must match the `size_params` key exactly; stitch-token lowercasing skips everything inside `{...}`. Every placeholder in a row's text columns must have a `size_params` entry on that row (import script rule 12).
+**Why:** The M1.3 script rejected `k{a}`, and its lowercasing would also have stored `k{A}` as `k{a}` while the key stayed `A`, so the knitting screen's substitution would silently miss. Exact match keeps stored text and keys self-consistent.
+**Alternatives considered:** Case-insensitive matching (pushes case folding into the M1.5 UI and leaves text and keys differing in case); substituting a real size's value before lookup (validation would need a size).
+
 ---
 
 ## 2026-09-19 — M1.3 import: direct Postgres transaction; --replace keeps the pattern row, resets progress to start
