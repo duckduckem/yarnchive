@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  checkpointCounts, createNav, emptyProgress, next, prev, repeatCountFor, setCheckbox, view,
+  checkpointCounts, createNav, emptyProgress, jumpTo, next, passRange, prev, repeatCountFor, setCheckbox, view,
   type Nav, type Progress, type RepeatGroup,
 } from "./knitNav.ts";
 import { stepsForSize, type Step } from "./knitText.ts";
@@ -156,4 +156,53 @@ test("checkpointCounts: total first, every label, underscores as spaces, missing
   assert.deepEqual(withGap, [{ label: "total", value: "10" }, { label: "sleeve", value: null }]);
   assert.equal(checkpointCounts(null, "S"), null);
   assert.equal(checkpointCounts({}, "S"), null);
+});
+
+test("jumpTo a plain step or an intro clears all repeat state", () => {
+  const nav = navFor("S");
+  for (const id of ["s1", "s2", "s5", "s6"]) {
+    const p = jumpTo(nav, nav.steps.findIndex((s) => s.id === id));
+    assert.equal(p.current_step_id, id);
+    assert.deepEqual(p.repeat_pass_counts, {});
+    assert.deepEqual(p.checkbox_states, {});
+  }
+});
+
+test("jumpTo a body step sets that group's pass, defaults to 1, and clamps to the count", () => {
+  const nav = navFor("S");
+  const i = nav.steps.findIndex((s) => s.id === "s4");
+  assert.equal(where(nav, jumpTo(nav, i)), "s4/p1");
+  assert.equal(where(nav, jumpTo(nav, i, 2)), "s4/p2");
+  assert.equal(where(nav, jumpTo(nav, i, 99)), "s4/p3");
+  assert.equal(where(nav, jumpTo(nav, i, 0)), "s4/p1");
+  assert.equal(where(nav, jumpTo(nav, i, 1.5)), "s4/p1");
+  assert.deepEqual(jumpTo(nav, i, 2).repeat_pass_counts, { G1: 2 });
+});
+
+test("jumpTo a condition-group body step has no upper bound and an unticked checkbox", () => {
+  const nav = navFor("S");
+  const i = nav.steps.findIndex((s) => s.id === "s8");
+  const p = jumpTo(nav, i, 12);
+  assert.equal(where(nav, p), "s8/p12");
+  assert.equal(view(nav, p).conditionTicked, false);
+  assert.deepEqual(p.checkbox_states, { G2: false });
+});
+
+test("jumping into a group then stepping continues normally and back out lands on the final pass", () => {
+  const nav = navFor("S");
+  const p = jumpTo(nav, nav.steps.findIndex((s) => s.id === "s3"), 3);
+  assert.equal(where(nav, next(nav, p)!), "s4/p3");
+  assert.equal(where(nav, next(nav, next(nav, p)!)!), "s5");
+  // Jump past G1 having visited it earlier, then Previous: final pass, not a stale one.
+  const past = jumpTo(nav, nav.steps.findIndex((s) => s.id === "s5"));
+  assert.equal(where(nav, prev(nav, past)!), "s4/p3");
+});
+
+test("passRange: null outside group bodies, count max for count groups, null max for condition groups", () => {
+  const nav = navFor("S");
+  const at = (id: string) => nav.steps.findIndex((s) => s.id === id);
+  assert.equal(passRange(nav, at("s1")), null);
+  assert.equal(passRange(nav, at("s2")), null);
+  assert.deepEqual(passRange(nav, at("s3")), { max: 3 });
+  assert.deepEqual(passRange(nav, at("s7")), { max: null });
 });

@@ -154,6 +154,29 @@ export function prev(nav: Nav, p: Progress): Progress | null {
   return v.index > 0 ? land(nav, p, v.index - 1) : null;
 }
 
+/** For a group body step: the pass range a jump can target (max null = no upper bound). Null for any other step. */
+export function passRange(nav: Nav, index: number): { max: number | null } | null {
+  const step = nav.steps[index];
+  const span = spanOf(nav, step);
+  if (!span || step.repeat_step_number === null) return null;
+  return { max: isConditionGroup(span.group) ? null : repeatCountFor(span.group, nav.size) };
+}
+
+/**
+ * Jump to `index` (specs/projects.md §3). Repeat state is rewritten wholesale:
+ * cleared, then a body step's group gets the chosen pass (clamped to the
+ * group's range) with its checkbox unticked.
+ */
+export function jumpTo(nav: Nav, index: number, pass = 1): Progress {
+  const base: Progress = { current_step_id: nav.steps[index].id, repeat_pass_counts: {}, checkbox_states: {} };
+  const range = passRange(nav, index);
+  if (!range) return base;
+  const wanted = Number.isInteger(pass) ? pass : 1;
+  const clamped = Math.max(1, range.max === null ? wanted : Math.min(wanted, range.max));
+  const groupId = nav.steps[index].repeat_group_id!;
+  return { ...base, repeat_pass_counts: { [groupId]: clamped }, checkbox_states: { [groupId]: false } };
+}
+
 export function setCheckbox(p: Progress, groupId: string, ticked: boolean): Progress {
   return { ...p, checkbox_states: { ...p.checkbox_states, [groupId]: ticked } };
 }
