@@ -29,12 +29,29 @@ async function loadSteps(patternId: string): Promise<Step[]> {
   }
 }
 
-export async function loadKnitData(slug: string, size: string): Promise<KnitData> {
+export interface ProjectInfo {
+  id: string;
+  patternId: string;
+  size: string;
+}
+
+/** The project row, or null when it doesn't exist (or isn't mine: RLS hides it). */
+export async function loadProject(projectId: string): Promise<ProjectInfo | null> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, pattern_id, size_label")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { id: data.id, patternId: data.pattern_id, size: data.size_label } : null;
+}
+
+export async function loadKnitData(patternId: string, size: string): Promise<KnitData> {
   try {
     const { data: pattern, error } = await supabase
       .from("patterns")
       .select("id, name")
-      .eq("slug", slug)
+      .eq("id", patternId)
       .maybeSingle();
     if (error) throw error;
     if (!pattern) return { status: "no-pattern" };

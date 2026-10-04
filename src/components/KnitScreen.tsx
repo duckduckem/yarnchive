@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { loadKnitData, type KnitData } from "../lib/knitData";
+import { loadKnitData, loadProject, type KnitData } from "../lib/knitData";
 import { fillPlaceholders, stepPreview, stepsForSize, type Step } from "../lib/knitText";
-import { checkpointCounts, createNav, next, prev, setCheckbox, view, type Nav, type Progress, type View } from "../lib/knitNav";
-import { useProgress } from "../lib/progress";
+import { checkpointCounts, createNav, jumpTo, next, prev, setCheckbox, view, type Nav, type Progress, type View } from "../lib/knitNav";
+import { useProgress, type SaveState } from "../lib/progress";
 import Moves, { PieceText } from "./Moves";
+import StepPicker from "./StepPicker";
 
 function Message({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
@@ -112,31 +113,69 @@ function stepAfter(nav: Nav, p: Progress | null): Step | undefined {
   return p ? view(nav, p).step : undefined;
 }
 
-export default function KnitScreen({ slug, size }: { slug: string; size: string }) {
-  const [data, setData] = useState<KnitData | null>(null);
-  const [progress, setProgress] = useProgress(`${slug}:${size}`);
+function SaveBanner({ save, onRetry }: { save: SaveState; onRetry: () => void }) {
+  if (save.status !== "failed") return null;
+  return (
+    <div role="alert" className="flex flex-col gap-2 rounded-card border border-danger p-3 text-text">
+      <p className="text-lg font-semibold text-danger">Not saved: your place is only on this screen.</p>
+      <p className="text-sm text-text-muted">{save.message}</p>
+      <button type="button" onClick={onRetry} className="rounded-card bg-accent py-3 text-lg font-medium text-accent-foreground">
+        Retry save
+      </button>
+    </div>
+  );
+}
+
+type Loaded = { status: "loading" } | { status: "missing" } | { status: "error"; message: string } | { status: "ok"; size: string; data: KnitData };
+
+export default function KnitScreen({ projectId }: { projectId: string }) {
+  const [loaded, setLoaded] = useState<Loaded>({ status: "loading" });
+  const { progress, loadError, save, set: setProgress, retry, reload } = useProgress(projectId);
   const [confirmed, setConfirmed] = useState(false);
+  const [jumping, setJumping] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    loadKnitData(slug, size).then((d) => {
-      if (!cancelled) setData(d);
-    });
+    (async () => {
+      try {
+        const project = await loadProject(projectId);
+        if (!project) {
+          if (!cancelled) setLoaded({ status: "missing" });
+          return;
+        }
+        const data = await loadKnitData(project.patternId, project.size);
+        if (!cancelled) setLoaded({ status: "ok", size: project.size, data });
+      } catch (e) {
+        if (!cancelled) setLoaded({ status: "error", message: e instanceof Error ? e.message : String(e) });
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, [slug, size]);
+  }, [projectId]);
 
+  const size = loaded.status === "ok" ? loaded.size : "";
+  const data = loaded.status === "ok" ? loaded.data : null;
   const nav = useMemo(
     () => (data?.status === "ok" ? createNav(stepsForSize(data.steps, size), data.groups, size) : null),
     [data, size],
   );
 
-  if (!data) return <Message title="Loading…" />;
+  if (loaded.status === "missing") return <Message title="Project not found"><a href="/" className="text-accent underline">Back to projects</a></Message>;
+  if (loaded.status === "error") return <Message title="Couldn't load the project">{loaded.message}</Message>;
+  if (loadError) {
+    return (
+      <Message title="Couldn't load your saved place">
+        <p>{loadError}</p>
+        <button type="button" onClick={reload} className="mt-3 rounded-card border border-border px-3 py-2 text-text">Try again</button>
+      </Message>
+    );
+  }
+  if (!data || !progress) return <Message title="Loading…" />;
   if (data.status === "error") return <Message title="Couldn't load the pattern">{data.message}</Message>;
-  if (data.status === "no-pattern") return <Message title="Pattern not found">No pattern with slug “{slug}”.</Message>;
+  if (data.status === "no-pattern") return <Message title="Pattern not found">This project's pattern is missing.</Message>;
   if (data.status === "no-size") {
-    return <Message title="Size not found">Size “{size}” isn't in this pattern. Available: {data.sizes.join(", ")}.</Message>;
+    return <Message title="Size not found">Size “{size}” isn't in this pattern any more. Available: {data.sizes.join(", ")}.</Message>;
   }
   if (!nav || nav.steps.length === 0) return <Message title="No steps">This pattern has no steps for size {size}.</Message>;
 
@@ -151,6 +190,7 @@ export default function KnitScreen({ slug, size }: { slug: string; size: string 
     if (!p) return;
     setProgress(p);
     setConfirmed(false);
+    setJumping(false);
   };
 
   return (
@@ -158,9 +198,18 @@ export default function KnitScreen({ slug, size }: { slug: string; size: string 
       <main className="flex flex-1 flex-col gap-4 px-4 py-4">
         <header className="text-sm text-text-muted">
           <p>
-            {data.patternName} · size {size} · step {v.index + 1} of {nav.steps.length}
+            <a href="/" className="text-accent underline">Projects</a> · {data.patternName} · size {size} · step {v.index + 1} of {nav.steps.length}
           </p>
+          <button type="button" onClick={() => setJumping(true)} className="mt-2 rounded-card border border-border px-3 py-2 text-text">
+            Jump to step
+          </button>
         </header>
+
+        <SaveBanner save={save} onRetry={retry} />
+
+        {jumping && (
+          <StepPicker nav={nav} currentIndex={v.index} onCancel={() => setJumping(false)} onPick={(i, pass) => go(jumpTo(nav, i, pass))} />
+        )}
 
         <Preview label="Previous" step={stepAfter(nav, prevProgress)} size={size} />
 
