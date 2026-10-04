@@ -10,6 +10,14 @@ Format:
 **Alternatives considered:** What we didn't pick and why.
 ```
 
+## 2026-10-04 — Knitting screen: repeat navigation and checkpoint confirm (M1.6)
+
+**Decision:** Position is `current_step_id` + `repeat_pass_counts` + `checkbox_states` (the `project_progress` shape), read and written only through `src/lib/progress.ts`, in memory until M1.7. Next/Previous step through every pass; leaving a group keeps its pass count and ticked checkbox so Previous restores the final pass, and re-entering through the intro restarts at pass 1. Three calls: (1) a count group with no `repeat_count` for the size is shown as missing, and Next leaves the group after one pass; (2) a condition group's `last_repeat_note` shows on the pass's last step once the checkbox is ticked, since the final pass isn't known earlier; (3) checkpoint confirmation is transient UI state, reset on any move, not stored in `checkbox_states`. Full rules in `specs/knit-navigation.md`.
+**Why:** (1) Blocking would trap the knitter on a data gap. (2) It's the only point at which "final pass" is true. (3) `checkbox_states` is defined as group id → bool; overloading it would change the schema's meaning, and re-confirming a count after resuming is harmless.
+**Alternatives considered:** Blocking Next on a missing count; persisting checkpoint confirmation (needs a new field or an overloaded one, for little value).
+
+---
+
 ## 2026-10-04 — `stitch_instructions` is a list of moves, not tokens
 
 **Decision:** Each comma-separated item is a move, the unit the knitter crosses off (KNIT-02). A move is classified by its first word: a known abbreviation (resolved; the rest is display text), a word from a short plain-action allowlist (display text), or anything else (a dry-run warning, not an error). Abbreviation lookup is case-insensitive; text is stored and displayed as written. This replaces the lowercase-normalization rule for this column only. Placeholder validation (rule 12) is unchanged.
