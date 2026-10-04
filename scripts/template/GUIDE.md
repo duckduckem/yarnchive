@@ -143,24 +143,42 @@ values for the same set of sizes** — don't fill `count_total_S` and
 `count_total_M` but only `count_partA_S`. See `step_order = 12` in the
 fixture.
 
-## Stitch tokens
+## Moves in `stitch_instructions`
 
-`stitch_instructions` is a comma-separated list of lowercase tokens (the
-import script lowercases and normalizes spacing for you — you don't have to
-get the casing perfect). Each token resolves in this order:
+`stitch_instructions` is a comma-separated list of **moves**. Each move is one
+unit you'll cross off while knitting, so a move can be a bare stitch (`k2tog`),
+a stitch with connecting words (`k to last {A} sts`, `BO {A} sts`), or a plain
+action (`remove marker`). A move never contains a comma — a comma starts the
+next move. Write moves the way the pattern words them; case is kept exactly as
+you type it.
 
-1. An exact match against this pattern's own `stitch_entries.csv`.
-2. An exact match against the shared stitch dictionary.
-3. Pipe syntax `[shown as|actual-id]` — write whatever text you want the
-   knitter to see, then the real abbreviation to look up after the `|`. See
-   `[dec evenly|k2tog]` in the fixture (`step_order = 2`, size S).
-4. Trailing digits stripped and retried — `k12` resolves as `k`. See the
-   fixture's `k12` and `k1` tokens. A trailing `{PLACEHOLDER}` counts as a
-   number, so `k{A}` resolves as `k` (see step 17).
+The import script looks only at each move's **first word** (case-insensitive):
 
-If none of those match, the import script reports it as an error with the
-file and row number. Add a `stitch_entries.csv` row if it's genuinely
-pattern-specific.
+1. **A known abbreviation** — the move is resolved: that first word gets a
+   definition and the rest of the move is just display text. Lookup order:
+   - an exact match against this pattern's own `stitch_entries.csv`, then the
+     shared stitch dictionary;
+   - pipe syntax `[shown as|actual-id]` at the start of the move: write
+     whatever text you want the knitter to see, then the real abbreviation
+     after the `|` (`[dec evenly|k2tog]`, fixture `step_order = 2`, size S);
+   - trailing digits stripped and retried: `k12` resolves as `k`. A trailing
+     `{PLACEHOLDER}` counts as a number, so `k{A}` resolves as `k` (fixture
+     `step_order = 17`).
+2. **A plain action** — the first word is one of: knit, purl, work, place,
+   remove, cut, slip, turn, bind, cast, increase, decrease, join, repeat,
+   continue, pick, use, switch, change, wrap, transfer, sew, weave, thread,
+   graft, move, hold, drop, pass, end, begin, divide, set, rejoin, slide,
+   break, finish, start. The move is shown as written, with no definition.
+   (A known abbreviation wins if a word is both.)
+3. **Anything else** — the dry run prints a **warning** with the row and the
+   unknown first word. It's not an error and won't stop the import, so read
+   the warnings: a typo like `k2tgo` lands here. If it's a real
+   pattern-specific abbreviation, add a `stitch_entries.csv` row; if it's an
+   unusual verb, it's fine to leave as is.
+
+See `step_order = 18` (`K to last {A} sts, BO {A} sts, remove marker`: two
+abbreviation moves with connecting text, one plain action, mixed case) and
+`step_order = 19` (`place marker, Bo, k2tog`) in the fixture.
 
 ## Errata
 
