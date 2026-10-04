@@ -60,8 +60,19 @@ The dynamic column prefixes:
 | Prefix | Where | Fills |
 |---|---|---|
 | `repeat_count_<SIZE>` | `repeat_groups.csv` | how many times a *count* repeat runs, per size |
-| `param_<PLACEHOLDER>_<SIZE>` | `repeat_groups.csv` or `steps.csv` | a `{PLACEHOLDER}` token inside that same row's own text, per size |
+| `param_<PLACEHOLDER>_<SIZE>` | `repeat_groups.csv` or `steps.csv` | a `{PLACEHOLDER}` token inside that same row's own text (any of `instructions_before`, `stitch_instructions`, `instructions_after`, `repeat_condition`), per size |
 | `count_<LABEL>_<SIZE>` | `steps.csv` (checkpoints only) | a stitch count, per size — use the label `total` unless you're giving a breakdown |
+
+## Placeholders
+
+Write `{NAME}` anywhere in `instructions_before`, `stitch_instructions`,
+`instructions_after`, or `repeat_condition`, and give it values in matching
+`param_NAME_<SIZE>` columns **on the same row**. **Names are case-sensitive:**
+`{A}` needs `param_A_S`, not `param_a_S`. Copy the name straight from the
+column header; the script never changes case inside `{...}`, and it reports an
+error (with a "did you mean" hint) if the text and header don't match exactly.
+A placeholder with no values at all on its row is also an error, but blank
+cells for sizes you aren't knitting are fine. See step 17 in the fixture.
 
 ## Sizes you don't need yet
 
@@ -144,7 +155,8 @@ get the casing perfect). Each token resolves in this order:
    knitter to see, then the real abbreviation to look up after the `|`. See
    `[dec evenly|k2tog]` in the fixture (`step_order = 2`, size S).
 4. Trailing digits stripped and retried — `k12` resolves as `k`. See the
-   fixture's `k12` and `k1` tokens.
+   fixture's `k12` and `k1` tokens. A trailing `{PLACEHOLDER}` counts as a
+   number, so `k{A}` resolves as `k` (see step 17).
 
 If none of those match, the import script reports it as an error with the
 file and row number. Add a `stitch_entries.csv` row if it's genuinely
